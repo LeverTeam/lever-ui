@@ -47,6 +47,7 @@ struct AppHandler {
     renderer: Option<Renderer>,
     draw_list: DrawList,
     cursor_pos: lever_core::types::Point,
+    text_system: lever_core::text::TextSystem,
 }
 
 impl AppHandler {
@@ -62,6 +63,7 @@ impl AppHandler {
             renderer: None,
             draw_list: DrawList::new(),
             cursor_pos: lever_core::types::Point { x: 0.0, y: 0.0 },
+            text_system: lever_core::text::TextSystem::new(),
         }
     }
 }
@@ -237,7 +239,7 @@ impl ApplicationHandler for AppHandler {
 
                     // Layout pass
                     let constraints = Constraints::tight(viewport.width, viewport.height);
-                    let _res = root_widget.layout(constraints, &[]);
+                    let _res = root_widget.layout(constraints, &[], &mut self.text_system);
 
                     root_widget.draw(
                         Rect {
@@ -247,6 +249,7 @@ impl ApplicationHandler for AppHandler {
                             height: viewport.height,
                         },
                         &mut self.draw_list,
+                        &mut self.text_system,
                     );
 
                     renderer.render(&self.draw_list);

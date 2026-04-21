@@ -46,6 +46,7 @@ impl FlexLayout {
         &self,
         constraints: Constraints,
         children: &[Box<dyn crate::widget::Widget>],
+        text_system: &mut crate::text::TextSystem,
     ) -> (LayoutResult, Vec<Rect>) {
         let mut child_results = Vec::with_capacity(children.len());
         let mut total_main = 0.0;
@@ -59,7 +60,7 @@ impl FlexLayout {
         };
 
         for child in children {
-            let res = child.layout(child_constraints, &[]);
+            let res = child.layout(child_constraints, &[], text_system);
             child_results.push(res);
 
             match self.direction {

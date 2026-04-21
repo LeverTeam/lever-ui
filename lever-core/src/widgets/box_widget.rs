@@ -42,13 +42,24 @@ impl Widget for BoxWidget {
         Vec::new()
     }
 
-    fn layout(&self, constraints: Constraints, _children: &[LayoutNode]) -> LayoutResult {
-        let mut content_constraints = constraints;
-        content_constraints.max_width -= self.padding.left + self.padding.right;
-        content_constraints.max_height -= self.padding.top + self.padding.bottom;
+    fn layout(
+        &self,
+        constraints: Constraints,
+        _children: &[LayoutNode],
+        text_system: &mut crate::text::TextSystem,
+    ) -> LayoutResult {
+        let padding_w = self.padding.left + self.padding.right;
+        let padding_h = self.padding.top + self.padding.bottom;
+
+        let content_constraints = Constraints {
+            min_width: (constraints.min_width - padding_w).max(0.0),
+            max_width: (constraints.max_width - padding_w).max(0.0),
+            min_height: (constraints.min_height - padding_h).max(0.0),
+            max_height: (constraints.max_height - padding_h).max(0.0),
+        };
 
         let child_size = if let Some(child) = &self.child {
-            child.layout(content_constraints, &[]).size
+            child.layout(content_constraints, &[], text_system).size
         } else {
             crate::types::Size {
                 width: 0.0,
@@ -57,14 +68,19 @@ impl Widget for BoxWidget {
         };
 
         let final_size = constraints.clamp_size(crate::types::Size {
-            width: child_size.width + self.padding.left + self.padding.right,
-            height: child_size.height + self.padding.top + self.padding.bottom,
+            width: child_size.width + padding_w,
+            height: child_size.height + padding_h,
         });
 
         LayoutResult { size: final_size }
     }
 
-    fn draw(&self, rect: Rect, draw_list: &mut DrawList) {
+    fn draw(
+        &self,
+        rect: Rect,
+        draw_list: &mut DrawList,
+        text_system: &mut crate::text::TextSystem,
+    ) {
         if self.radius > 0.0 {
             draw_list.rounded_rect(rect, self.color, self.radius);
         } else {
@@ -78,7 +94,7 @@ impl Widget for BoxWidget {
                 width: rect.width - (self.padding.left + self.padding.right),
                 height: rect.height - (self.padding.top + self.padding.bottom),
             };
-            child.draw(child_rect, draw_list);
+            child.draw(child_rect, draw_list, text_system);
         }
     }
 }

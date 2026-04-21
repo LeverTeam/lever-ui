@@ -1,3 +1,4 @@
+pub mod atlas;
 pub mod batch;
 pub mod error;
 pub mod renderer;

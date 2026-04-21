@@ -38,10 +38,12 @@ impl Tessellator {
 
         let mut v_buffers: VertexBuffers<ColoredVertex, u32> = VertexBuffers::new();
 
+        let uv = 0.5 / 1024.0;
         let mut geometry_builder =
             BuffersBuilder::new(&mut v_buffers, |vertex: FillVertex| ColoredVertex {
                 position: [vertex.position().x, vertex.position().y],
                 color: c,
+                uv: [uv, uv],
             });
 
         let _ =

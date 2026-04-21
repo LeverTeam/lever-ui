@@ -14,6 +14,10 @@ pub enum DrawCommand {
     },
     ClipPush(Rect),
     ClipPop,
+    Text {
+        pos: crate::types::Point,
+        glyphs: Vec<crate::text::GlyphInstance>,
+    },
 }
 
 pub struct DrawList {
@@ -49,6 +53,10 @@ impl DrawList {
 
     pub fn clip_pop(&mut self) {
         self.commands.push(DrawCommand::ClipPop);
+    }
+
+    pub fn text(&mut self, pos: crate::types::Point, glyphs: Vec<crate::text::GlyphInstance>) {
+        self.commands.push(DrawCommand::Text { pos, glyphs });
     }
 
     pub fn commands(&self) -> &[DrawCommand] {

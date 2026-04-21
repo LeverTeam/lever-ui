@@ -23,7 +23,12 @@ impl Button {
 }
 
 impl Widget for Button {
-    fn layout(&self, constraints: Constraints, _children: &[LayoutNode]) -> LayoutResult {
+    fn layout(
+        &self,
+        constraints: Constraints,
+        _children: &[LayoutNode],
+        text_system: &mut crate::text::TextSystem,
+    ) -> LayoutResult {
         let size = constraints.clamp_size(crate::types::Size {
             width: 100.0,
             height: 40.0,
@@ -31,7 +36,12 @@ impl Widget for Button {
         LayoutResult { size }
     }
 
-    fn draw(&self, rect: Rect, draw_list: &mut DrawList) {
+    fn draw(
+        &self,
+        rect: Rect,
+        draw_list: &mut DrawList,
+        _text_system: &mut crate::text::TextSystem,
+    ) {
         let color = if self.is_hovered {
             self.hover_color
         } else {
