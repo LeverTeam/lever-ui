@@ -1,43 +1,38 @@
 use crate::draw::DrawList;
 use crate::layout::{Constraints, LayoutNode, LayoutResult};
-use crate::types::{Color, Rect};
+use crate::types::{Color, Rect, Size};
 use crate::widget::Widget;
 
-pub struct Button {
-    pub color: Option<Color>,
-    pub hover_color: Option<Color>,
-    pub radius: Option<f32>,
-    pub is_hovered: bool,
-    pub on_click: Option<Box<dyn FnMut()>>,
+pub struct Button<M> {
+    pub label: String,
+    pub color: Color,
+    pub on_click: Option<Box<dyn Fn() -> M>>,
 }
 
-impl Button {
-    pub fn new() -> Self {
+impl<M> Button<M> {
+    pub fn new(label: impl Into<String>) -> Self {
         Self {
-            color: None,
-            hover_color: None,
-            radius: None,
-            is_hovered: false,
+            label: label.into(),
+            color: Color::rgb(0.2, 0.4, 0.8),
             on_click: None,
         }
     }
 
-    pub fn with_colors(mut self, color: Color, hover_color: Color) -> Self {
-        self.color = Some(color);
-        self.hover_color = Some(hover_color);
+    pub fn with_color(mut self, color: Color) -> Self {
+        self.color = color;
         self
     }
 
-    pub fn with_click<F>(mut self, f: F) -> Self
+    pub fn on_click<F>(mut self, f: F) -> Self
     where
-        F: FnMut() + 'static,
+        F: Fn() -> M + 'static,
     {
         self.on_click = Some(Box::new(f));
         self
     }
 }
 
-impl Widget for Button {
+impl<M: 'static> Widget<M> for Button<M> {
     fn layout(
         &self,
         constraints: Constraints,
@@ -45,9 +40,9 @@ impl Widget for Button {
         _text_system: &mut crate::text::TextSystem,
         _theme: &crate::theme::Theme,
     ) -> LayoutResult {
-        let size = constraints.clamp_size(crate::types::Size {
+        let size = constraints.clamp_size(Size {
             width: 100.0,
-            height: 40.0,
+            height: 36.0,
         });
         LayoutResult { size }
     }
@@ -56,15 +51,23 @@ impl Widget for Button {
         &self,
         rect: Rect,
         draw_list: &mut DrawList,
-        _text_system: &mut crate::text::TextSystem,
+        text_system: &mut crate::text::TextSystem,
         theme: &crate::theme::Theme,
+        _focused_id: Option<&str>,
     ) {
-        let color = if self.is_hovered {
-            self.hover_color.unwrap_or(theme.primary_hover)
-        } else {
-            self.color.unwrap_or(theme.primary)
-        };
-        draw_list.rounded_rect(rect, color, self.radius.unwrap_or(theme.radius_md));
+        draw_list.rounded_rect(rect, self.color, theme.radius_sm);
+
+        let layout = text_system.shape(&self.label, 14.0, Color::rgb(1.0, 1.0, 1.0));
+        let x_offset = (rect.width - layout.width) / 2.0;
+        let y_offset = (rect.height - layout.height) / 2.0;
+
+        draw_list.text(
+            crate::types::Point {
+                x: rect.x + x_offset,
+                y: rect.y + y_offset,
+            },
+            layout.glyphs,
+        );
     }
 
     fn on_event(
@@ -73,24 +76,19 @@ impl Widget for Button {
         rect: Rect,
         _text_system: &mut crate::text::TextSystem,
         _theme: &crate::theme::Theme,
-    ) -> bool {
+        _focused_id: &mut Option<String>,
+    ) -> Vec<M> {
+        let mut messages = Vec::new();
         match event {
-            crate::event::FrameworkEvent::PointerMove { position } => {
-                self.is_hovered = rect.contains(*position);
-                false
-            }
-            crate::event::FrameworkEvent::PointerDown { position, button } => {
-                if *button == crate::event::PointerButton::Primary {
-                    if rect.contains(*position) {
-                        if let Some(on_click) = &mut self.on_click {
-                            on_click();
-                        }
-                        return true;
+            crate::event::FrameworkEvent::PointerDown { position, .. } => {
+                if rect.contains(*position) {
+                    if let Some(on_click) = &self.on_click {
+                        messages.push(on_click());
                     }
                 }
-                false
             }
-            _ => false,
+            _ => {}
         }
+        messages
     }
 }

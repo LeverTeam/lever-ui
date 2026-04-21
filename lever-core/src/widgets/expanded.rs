@@ -3,13 +3,13 @@ use crate::layout::{Constraints, LayoutNode, LayoutResult};
 use crate::types::Rect;
 use crate::widget::Widget;
 
-pub struct Expanded {
+pub struct Expanded<M> {
     pub flex: u32,
-    pub child: Box<dyn Widget>,
+    pub child: Box<dyn Widget<M>>,
 }
 
-impl Expanded {
-    pub fn new(child: Box<dyn Widget>) -> Self {
+impl<M> Expanded<M> {
+    pub fn new(child: Box<dyn Widget<M>>) -> Self {
         Self { flex: 1, child }
     }
 
@@ -19,15 +19,7 @@ impl Expanded {
     }
 }
 
-impl Widget for Expanded {
-    fn flex(&self) -> u32 {
-        self.flex
-    }
-
-    fn build(&self) -> Vec<Box<dyn Widget>> {
-        Vec::new()
-    }
-
+impl<M: 'static> Widget<M> for Expanded<M> {
     fn layout(
         &self,
         constraints: Constraints,
@@ -44,8 +36,10 @@ impl Widget for Expanded {
         draw_list: &mut DrawList,
         text_system: &mut crate::text::TextSystem,
         theme: &crate::theme::Theme,
+        focused_id: Option<&str>,
     ) {
-        self.child.draw(rect, draw_list, text_system, theme);
+        self.child
+            .draw(rect, draw_list, text_system, theme, focused_id);
     }
 
     fn on_event(
@@ -54,7 +48,13 @@ impl Widget for Expanded {
         rect: Rect,
         text_system: &mut crate::text::TextSystem,
         theme: &crate::theme::Theme,
-    ) -> bool {
-        self.child.on_event(event, rect, text_system, theme)
+        focused_id: &mut Option<String>,
+    ) -> Vec<M> {
+        self.child
+            .on_event(event, rect, text_system, theme, focused_id)
+    }
+
+    fn flex(&self) -> u32 {
+        self.flex
     }
 }

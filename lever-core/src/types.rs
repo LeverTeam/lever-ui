@@ -1,10 +1,10 @@
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct Point {
     pub x: f32,
     pub y: f32,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct Size {
     pub width: f32,
     pub height: f32,
@@ -52,6 +52,15 @@ impl Rect {
     }
     pub fn max_y(&self) -> f32 {
         self.y + self.height
+    }
+
+    pub fn inset(&self, dx: f32, dy: f32) -> Rect {
+        Rect {
+            x: self.x + dx,
+            y: self.y + dy,
+            width: (self.width - 2.0 * dx).max(0.0),
+            height: (self.height - 2.0 * dy).max(0.0),
+        }
     }
 }
 

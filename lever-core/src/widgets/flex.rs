@@ -3,28 +3,36 @@ use crate::layout::{Constraints, FlexDirection, FlexLayout, LayoutNode, LayoutRe
 use crate::types::Rect;
 use crate::widget::Widget;
 
-pub struct Flex {
+pub struct Flex<M> {
     pub direction: FlexDirection,
-    pub children: Vec<Box<dyn Widget>>,
+    pub children: Vec<Box<dyn Widget<M>>>,
+    pub gap: f32,
 }
 
-impl Flex {
-    pub fn row(children: Vec<Box<dyn Widget>>) -> Self {
+impl<M> Flex<M> {
+    pub fn row(children: Vec<Box<dyn Widget<M>>>) -> Self {
         Self {
             direction: FlexDirection::Row,
             children,
+            gap: 0.0,
         }
     }
 
-    pub fn column(children: Vec<Box<dyn Widget>>) -> Self {
+    pub fn column(children: Vec<Box<dyn Widget<M>>>) -> Self {
         Self {
             direction: FlexDirection::Column,
             children,
+            gap: 0.0,
         }
+    }
+
+    pub fn with_gap(mut self, gap: f32) -> Self {
+        self.gap = gap;
+        self
     }
 }
 
-impl Widget for Flex {
+impl<M: 'static> Widget<M> for Flex<M> {
     fn layout(
         &self,
         constraints: Constraints,
@@ -32,7 +40,8 @@ impl Widget for Flex {
         text_system: &mut crate::text::TextSystem,
         theme: &crate::theme::Theme,
     ) -> LayoutResult {
-        let solver = FlexLayout::new(self.direction);
+        let mut solver = FlexLayout::new(self.direction);
+        solver.gap = self.gap;
         let (result, _) = solver.layout(constraints, &self.children, text_system, theme);
         result
     }
@@ -43,8 +52,10 @@ impl Widget for Flex {
         draw_list: &mut DrawList,
         text_system: &mut crate::text::TextSystem,
         theme: &crate::theme::Theme,
+        focused_id: Option<&str>,
     ) {
-        let solver = FlexLayout::new(self.direction);
+        let mut solver = FlexLayout::new(self.direction);
+        solver.gap = self.gap;
         let (_result, child_rects) = solver.layout(
             Constraints::tight(rect.width, rect.height),
             &self.children,
@@ -56,7 +67,7 @@ impl Widget for Flex {
             let mut child_rect = child_rects[i];
             child_rect.x += rect.x;
             child_rect.y += rect.y;
-            child.draw(child_rect, draw_list, text_system, theme);
+            child.draw(child_rect, draw_list, text_system, theme, focused_id);
         }
     }
 
@@ -66,8 +77,11 @@ impl Widget for Flex {
         rect: Rect,
         text_system: &mut crate::text::TextSystem,
         theme: &crate::theme::Theme,
-    ) -> bool {
-        let solver = FlexLayout::new(self.direction);
+        focused_id: &mut Option<String>,
+    ) -> Vec<M> {
+        let mut messages = Vec::new();
+        let mut solver = FlexLayout::new(self.direction);
+        solver.gap = self.gap;
         let (_result, child_rects) = solver.layout(
             Constraints::tight(rect.width, rect.height),
             &self.children,
@@ -80,10 +94,8 @@ impl Widget for Flex {
             child_rect.x += rect.x;
             child_rect.y += rect.y;
 
-            if child.on_event(event, child_rect, text_system, theme) {
-                return true;
-            }
+            messages.extend(child.on_event(event, child_rect, text_system, theme, focused_id));
         }
-        false
+        messages
     }
 }

@@ -29,7 +29,7 @@ pub struct FlexLayout {
     pub direction: FlexDirection,
     pub main_axis_alignment: MainAxisAlignment,
     pub cross_axis_alignment: CrossAxisAlignment,
-    pub spacing: f32,
+    pub gap: f32,
 }
 
 impl FlexLayout {
@@ -38,14 +38,14 @@ impl FlexLayout {
             direction,
             main_axis_alignment: MainAxisAlignment::Start,
             cross_axis_alignment: CrossAxisAlignment::Start,
-            spacing: 0.0,
+            gap: 0.0,
         }
     }
 
-    pub fn layout(
+    pub fn layout<M>(
         &self,
         constraints: Constraints,
-        children: &[Box<dyn crate::widget::Widget>],
+        children: &[Box<dyn crate::widget::Widget<M>>],
         text_system: &mut crate::text::TextSystem,
         theme: &crate::theme::Theme,
     ) -> (LayoutResult, Vec<Rect>) {
@@ -88,7 +88,7 @@ impl FlexLayout {
         }
 
         if children.len() > 1 {
-            used_main += self.spacing * (children.len() - 1) as f32;
+            used_main += self.gap * (children.len() - 1) as f32;
         }
 
         if total_flex > 0 {
@@ -163,7 +163,7 @@ impl FlexLayout {
                             res.size.height
                         },
                     };
-                    current_main += res.size.width + self.spacing;
+                    current_main += res.size.width + self.gap;
                     r
                 }
                 FlexDirection::Column => {
@@ -183,7 +183,7 @@ impl FlexLayout {
                         },
                         height: res.size.height,
                     };
-                    current_main += res.size.height + self.spacing;
+                    current_main += res.size.height + self.gap;
                     r
                 }
             };

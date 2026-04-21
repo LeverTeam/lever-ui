@@ -1,27 +1,19 @@
 use crate::draw::DrawList;
 use crate::layout::{Constraints, LayoutNode, LayoutResult};
-use crate::types::Rect;
+use crate::types::{Rect, Size};
 use crate::widget::Widget;
 
-pub struct Center {
-    pub child: Box<dyn Widget>,
+pub struct Center<M> {
+    pub child: Box<dyn Widget<M>>,
 }
 
-impl Center {
-    pub fn new(child: Box<dyn Widget>) -> Self {
+impl<M> Center<M> {
+    pub fn new(child: Box<dyn Widget<M>>) -> Self {
         Self { child }
     }
 }
 
-impl Widget for Center {
-    fn build(&self) -> Vec<Box<dyn Widget>> {
-        Vec::new()
-    }
-
-    fn flex(&self) -> u32 {
-        self.child.flex()
-    }
-
+impl<M: 'static> Widget<M> for Center<M> {
     fn layout(
         &self,
         constraints: Constraints,
@@ -37,10 +29,10 @@ impl Widget for Center {
         );
 
         LayoutResult {
-            size: constraints.clamp_size(crate::types::Size {
+            size: Size {
                 width: constraints.max_width,
                 height: constraints.max_height,
-            }),
+            },
         }
     }
 
@@ -50,6 +42,7 @@ impl Widget for Center {
         draw_list: &mut DrawList,
         text_system: &mut crate::text::TextSystem,
         theme: &crate::theme::Theme,
+        focused_id: Option<&str>,
     ) {
         let child_res = self.child.layout(
             Constraints::loose(rect.width, rect.height),
@@ -65,7 +58,8 @@ impl Widget for Center {
             height: child_res.size.height,
         };
 
-        self.child.draw(child_rect, draw_list, text_system, theme);
+        self.child
+            .draw(child_rect, draw_list, text_system, theme, focused_id);
     }
 
     fn on_event(
@@ -74,7 +68,8 @@ impl Widget for Center {
         rect: Rect,
         text_system: &mut crate::text::TextSystem,
         theme: &crate::theme::Theme,
-    ) -> bool {
+        focused_id: &mut Option<String>,
+    ) -> Vec<M> {
         let child_res = self.child.layout(
             Constraints::loose(rect.width, rect.height),
             &[],
@@ -89,6 +84,7 @@ impl Widget for Center {
             height: child_res.size.height,
         };
 
-        self.child.on_event(event, child_rect, text_system, theme)
+        self.child
+            .on_event(event, child_rect, text_system, theme, focused_id)
     }
 }

@@ -1,15 +1,20 @@
 use crate::draw::DrawList;
 use crate::layout::{Constraints, LayoutNode, LayoutResult};
-use crate::types::Rect;
+use crate::types::{Rect, Size};
 use crate::widget::Widget;
+use std::marker::PhantomData;
 
-pub struct Spacer {
+pub struct Spacer<M> {
     pub flex: u32,
+    _marker: PhantomData<M>,
 }
 
-impl Spacer {
+impl<M> Spacer<M> {
     pub fn new() -> Self {
-        Self { flex: 1 }
+        Self {
+            flex: 0,
+            _marker: PhantomData,
+        }
     }
 
     pub fn with_flex(mut self, flex: u32) -> Self {
@@ -18,26 +23,18 @@ impl Spacer {
     }
 }
 
-impl Widget for Spacer {
-    fn flex(&self) -> u32 {
-        self.flex
-    }
-
-    fn build(&self) -> Vec<Box<dyn Widget>> {
-        Vec::new()
-    }
-
+impl<M: 'static> Widget<M> for Spacer<M> {
     fn layout(
         &self,
-        constraints: Constraints,
+        _constraints: Constraints,
         _children: &[LayoutNode],
         _text_system: &mut crate::text::TextSystem,
         _theme: &crate::theme::Theme,
     ) -> LayoutResult {
         LayoutResult {
-            size: crate::types::Size {
-                width: constraints.min_width,
-                height: constraints.min_height,
+            size: Size {
+                width: 0.0,
+                height: 0.0,
             },
         }
     }
@@ -48,6 +45,22 @@ impl Widget for Spacer {
         _draw_list: &mut DrawList,
         _text_system: &mut crate::text::TextSystem,
         _theme: &crate::theme::Theme,
+        _focused_id: Option<&str>,
     ) {
+    }
+
+    fn on_event(
+        &mut self,
+        _event: &crate::event::FrameworkEvent,
+        _rect: Rect,
+        _text_system: &mut crate::text::TextSystem,
+        _theme: &crate::theme::Theme,
+        _focused_id: &mut Option<String>,
+    ) -> Vec<M> {
+        Vec::new()
+    }
+
+    fn flex(&self) -> u32 {
+        self.flex
     }
 }

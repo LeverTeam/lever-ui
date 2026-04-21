@@ -1,44 +1,42 @@
 use crate::draw::DrawList;
 use crate::layout::{Constraints, LayoutNode, LayoutResult};
-use crate::types::{Color, Point, Rect, Size};
+use crate::types::{Color, Rect, Size};
 use crate::widget::Widget;
+use std::marker::PhantomData;
 
-pub struct Label {
+pub struct Label<M> {
     pub text: String,
     pub font_size: f32,
-    pub color: Option<Color>,
+    pub color: Color,
+    _marker: PhantomData<M>,
 }
 
-impl Label {
-    pub fn new(text: impl Into<String>, font_size: f32) -> Self {
+impl<M> Label<M> {
+    pub fn new(text: impl Into<String>, font_size: f32, color: Color) -> Self {
         Self {
             text: text.into(),
             font_size,
-            color: None,
+            color,
+            _marker: PhantomData,
         }
-    }
-
-    pub fn with_color(mut self, color: Color) -> Self {
-        self.color = Some(color);
-        self
     }
 }
 
-impl Widget for Label {
+impl<M: 'static> Widget<M> for Label<M> {
     fn layout(
         &self,
         constraints: Constraints,
         _children: &[LayoutNode],
         text_system: &mut crate::text::TextSystem,
-        theme: &crate::theme::Theme,
+        _theme: &crate::theme::Theme,
     ) -> LayoutResult {
-        let color = self.color.unwrap_or(theme.text);
-        let layout = text_system.shape(&self.text, self.font_size, color);
-        let size = constraints.clamp_size(Size {
-            width: layout.width,
-            height: layout.height,
-        });
-        LayoutResult { size }
+        let layout = text_system.shape(&self.text, self.font_size, self.color);
+        LayoutResult {
+            size: constraints.clamp_size(Size {
+                width: layout.width,
+                height: layout.height,
+            }),
+        }
     }
 
     fn draw(
@@ -46,17 +44,27 @@ impl Widget for Label {
         rect: Rect,
         draw_list: &mut DrawList,
         text_system: &mut crate::text::TextSystem,
-        theme: &crate::theme::Theme,
+        _theme: &crate::theme::Theme,
+        _focused_id: Option<&str>,
     ) {
-        let color = self.color.unwrap_or(theme.text);
-        let layout = text_system.shape(&self.text, self.font_size, color);
-
+        let layout = text_system.shape(&self.text, self.font_size, self.color);
         draw_list.text(
-            Point {
+            crate::types::Point {
                 x: rect.x,
                 y: rect.y,
             },
             layout.glyphs,
         );
+    }
+
+    fn on_event(
+        &mut self,
+        _event: &crate::event::FrameworkEvent,
+        _rect: Rect,
+        _text_system: &mut crate::text::TextSystem,
+        _theme: &crate::theme::Theme,
+        _focused_id: &mut Option<String>,
+    ) -> Vec<M> {
+        Vec::new()
     }
 }

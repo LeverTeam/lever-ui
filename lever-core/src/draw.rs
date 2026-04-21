@@ -19,6 +19,12 @@ pub enum DrawCommand {
         pos: crate::types::Point,
         glyphs: Vec<crate::text::GlyphInstance>,
     },
+    Stroke {
+        rect: Rect,
+        color: Color,
+        radius: f32,
+        thickness: f32,
+    },
 }
 
 pub struct DrawList {
@@ -83,6 +89,15 @@ impl DrawList {
 
     pub fn text(&mut self, pos: crate::types::Point, glyphs: Vec<crate::text::GlyphInstance>) {
         self.commands.push(DrawCommand::Text { pos, glyphs });
+    }
+
+    pub fn stroke_rect(&mut self, rect: Rect, color: Color, radius: f32, thickness: f32) {
+        self.commands.push(DrawCommand::Stroke {
+            rect,
+            color,
+            radius,
+            thickness,
+        });
     }
 
     pub fn commands(&self) -> &[DrawCommand] {

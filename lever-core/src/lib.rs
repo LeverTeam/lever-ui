@@ -1,3 +1,4 @@
+pub mod app;
 pub mod draw;
 pub mod event;
 pub mod layout;
@@ -7,6 +8,7 @@ pub mod types;
 pub mod widget;
 pub mod widgets;
 
+pub use app::*;
 pub use draw::*;
 pub use event::*;
 pub use layout::*;

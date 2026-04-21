@@ -12,10 +12,14 @@ layout(location = 0) in vec2 a_position;
 layout(location = 1) in vec4 a_color;
 layout(location = 2) in vec2 a_uv;
 layout(location = 3) in float a_mode;
+layout(location = 4) in vec2 a_size;
+layout(location = 5) in float a_extra;
 uniform vec2 u_viewport;
 out vec4 v_color;
 out vec2 v_uv;
 out float v_mode;
+out vec2 v_size;
+out float v_extra;
 void main() {
     vec2 ndc = (a_position / u_viewport) * 2.0 - 1.0;
     ndc.y = -ndc.y;
@@ -23,6 +27,8 @@ void main() {
     v_color = a_color;
     v_uv = a_uv;
     v_mode = a_mode;
+    v_size = a_size;
+    v_extra = a_extra;
 }
 "#;
 
@@ -31,12 +37,14 @@ const FRAG_SHADER_SOURCE: &str = r#"
 in vec4 v_color;
 in vec2 v_uv;
 in float v_mode;
+in vec2 v_size;
+in float v_extra;
 uniform sampler2D u_texture;
 out vec4 frag_color;
 
-float sdRect(vec2 p, vec2 b) {
-    vec2 d = abs(p) - b;
-    return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0);
+float sdRoundedRect(vec2 p, vec2 b, float r) {
+    vec2 q = abs(p) - b + vec2(r);
+    return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r;
 }
 
 void main() {
@@ -46,11 +54,10 @@ void main() {
     } else if (v_mode < 1.5) { // Mode 1: Solid / Gradient
         frag_color = v_color;
     } else if (v_mode < 2.5) { // Mode 2: Shadow
-        // v_uv is in [min, max] range relative to the rect [0, 1]
-        vec2 p = v_uv - 0.5;
-        float d = sdRect(p, vec2(0.5));
-        // Soft edge for shadow
-        float alpha = smoothstep(0.1, -0.1, d);
+        // v_uv is pixel distance from center
+        float d = sdRoundedRect(v_uv, v_size * 0.5, 8.0); // TODO: use real radius?
+        float blur = v_extra;
+        float alpha = smoothstep(blur, -blur, d);
         frag_color = vec4(v_color.rgb, v_color.a * alpha);
     } else {
         frag_color = v_color;
@@ -112,6 +119,10 @@ impl Renderer {
             gl.vertex_attrib_pointer_f32(2, 2, glow::FLOAT, false, stride, 24);
             gl.enable_vertex_attrib_array(3);
             gl.vertex_attrib_pointer_f32(3, 1, glow::FLOAT, false, stride, 32);
+            gl.enable_vertex_attrib_array(4);
+            gl.vertex_attrib_pointer_f32(4, 2, glow::FLOAT, false, stride, 36);
+            gl.enable_vertex_attrib_array(5);
+            gl.vertex_attrib_pointer_f32(5, 1, glow::FLOAT, false, stride, 44);
 
             gl.bind_buffer(glow::ELEMENT_ARRAY_BUFFER, Some(ibo));
 
@@ -253,6 +264,14 @@ impl Renderer {
                     unsafe {
                         self.gl.disable(glow::SCISSOR_TEST);
                     }
+                }
+                DrawCommand::Stroke {
+                    rect,
+                    color,
+                    radius,
+                    thickness,
+                } => {
+                    self.batch.push_stroke(*rect, *radius, *thickness, *color);
                 }
             }
         }

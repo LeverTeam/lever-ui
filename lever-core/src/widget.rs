@@ -2,8 +2,8 @@ use crate::draw::DrawList;
 use crate::layout::{Constraints, LayoutNode, LayoutResult};
 use crate::types::Rect;
 
-pub trait Widget {
-    fn build(&self) -> Vec<Box<dyn Widget>> {
+pub trait Widget<M> {
+    fn build(&self) -> Vec<Box<dyn Widget<M>>> {
         Vec::new()
     }
 
@@ -21,6 +21,7 @@ pub trait Widget {
         draw_list: &mut DrawList,
         text_system: &mut crate::text::TextSystem,
         theme: &crate::theme::Theme,
+        focused_id: Option<&str>,
     );
 
     fn on_event(
@@ -29,11 +30,16 @@ pub trait Widget {
         _rect: Rect,
         _text_system: &mut crate::text::TextSystem,
         _theme: &crate::theme::Theme,
-    ) -> bool {
-        false
+        _focused_id: &mut Option<String>,
+    ) -> Vec<M> {
+        Vec::new()
     }
 
     fn flex(&self) -> u32 {
         0
+    }
+
+    fn id(&self) -> Option<&str> {
+        None
     }
 }
