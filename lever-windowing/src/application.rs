@@ -66,6 +66,20 @@ impl AppHandler {
             text_system: lever_core::text::TextSystem::new(),
         }
     }
+
+    fn dispatch_event(&mut self, event: lever_core::event::FrameworkEvent) {
+        if let Some(window) = &self.window {
+            let mut root_widget = (self.build_ui)(self.cursor_pos);
+            let size = window.inner_size();
+            let rect = Rect {
+                x: 0.0,
+                y: 0.0,
+                width: size.width as f32,
+                height: size.height as f32,
+            };
+            root_widget.on_event(&event, rect, &mut self.text_system);
+        }
+    }
 }
 
 impl ApplicationHandler for AppHandler {
@@ -169,15 +183,16 @@ impl ApplicationHandler for AppHandler {
                     x: position.x as f32,
                     y: position.y as f32,
                 };
-                let _fe = lever_core::event::FrameworkEvent::PointerMove {
+                let event = lever_core::event::FrameworkEvent::PointerMove {
                     position: self.cursor_pos,
                 };
+                self.dispatch_event(event);
             }
             WindowEvent::MouseInput { state, button, .. } => {
-                let _fe = match state {
+                let event = match state {
                     winit::event::ElementState::Pressed => {
                         lever_core::event::FrameworkEvent::PointerDown {
-                            position: lever_core::types::Point { x: 0.0, y: 0.0 },
+                            position: self.cursor_pos,
                             button: match button {
                                 winit::event::MouseButton::Left => {
                                     lever_core::event::PointerButton::Primary
@@ -194,7 +209,7 @@ impl ApplicationHandler for AppHandler {
                     }
                     winit::event::ElementState::Released => {
                         lever_core::event::FrameworkEvent::PointerUp {
-                            position: lever_core::types::Point { x: 0.0, y: 0.0 },
+                            position: self.cursor_pos,
                             button: match button {
                                 winit::event::MouseButton::Left => {
                                     lever_core::event::PointerButton::Primary
@@ -210,6 +225,7 @@ impl ApplicationHandler for AppHandler {
                         }
                     }
                 };
+                self.dispatch_event(event);
             }
             WindowEvent::Resized(size) => {
                 if let (Some(gl_context), Some(window)) = (&self.gl_context, &self.window) {

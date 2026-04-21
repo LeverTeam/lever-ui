@@ -97,4 +97,22 @@ impl Widget for BoxWidget {
             child.draw(child_rect, draw_list, text_system);
         }
     }
+
+    fn on_event(
+        &mut self,
+        event: &crate::event::FrameworkEvent,
+        rect: Rect,
+        text_system: &mut crate::text::TextSystem,
+    ) -> bool {
+        if let Some(child) = &mut self.child {
+            let child_rect = Rect {
+                x: rect.x + self.padding.left,
+                y: rect.y + self.padding.top,
+                width: rect.width - (self.padding.left + self.padding.right),
+                height: rect.height - (self.padding.top + self.padding.bottom),
+            };
+            return child.on_event(event, child_rect, text_system);
+        }
+        false
+    }
 }

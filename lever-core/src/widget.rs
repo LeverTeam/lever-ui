@@ -16,5 +16,12 @@ pub trait Widget {
 
     fn draw(&self, rect: Rect, draw_list: &mut DrawList, text_system: &mut crate::text::TextSystem);
 
-    fn on_event(&self, _event: &crate::event::FrameworkEvent) {}
+    fn on_event(
+        &mut self,
+        _event: &crate::event::FrameworkEvent,
+        _rect: Rect,
+        _text_system: &mut crate::text::TextSystem,
+    ) -> bool {
+        false
+    }
 }

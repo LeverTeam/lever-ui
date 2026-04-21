@@ -9,6 +9,7 @@ pub struct Button {
     pub hover_color: Color,
     pub radius: f32,
     pub is_hovered: bool,
+    pub on_click: Option<Box<dyn FnMut()>>,
 }
 
 impl Button {
@@ -18,7 +19,16 @@ impl Button {
             hover_color,
             radius: 4.0,
             is_hovered: false,
+            on_click: None,
         }
+    }
+
+    pub fn with_click<F>(mut self, f: F) -> Self
+    where
+        F: FnMut() + 'static,
+    {
+        self.on_click = Some(Box::new(f));
+        self
     }
 }
 
@@ -48,5 +58,31 @@ impl Widget for Button {
             self.color
         };
         draw_list.rounded_rect(rect, color, self.radius);
+    }
+
+    fn on_event(
+        &mut self,
+        event: &crate::event::FrameworkEvent,
+        rect: Rect,
+        _text_system: &mut crate::text::TextSystem,
+    ) -> bool {
+        match event {
+            crate::event::FrameworkEvent::PointerMove { position } => {
+                self.is_hovered = rect.contains(*position);
+                false
+            }
+            crate::event::FrameworkEvent::PointerDown { position, button } => {
+                if *button == crate::event::PointerButton::Primary {
+                    if rect.contains(*position) {
+                        if let Some(on_click) = &mut self.on_click {
+                            on_click();
+                        }
+                        return true;
+                    }
+                }
+                false
+            }
+            _ => false,
+        }
     }
 }
