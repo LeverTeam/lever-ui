@@ -5,6 +5,8 @@ use crate::widget::Widget;
 use std::marker::PhantomData;
 
 pub struct Spacer<M> {
+    pub width: f32,
+    pub height: f32,
     pub flex: u32,
     _marker: PhantomData<M>,
 }
@@ -12,6 +14,26 @@ pub struct Spacer<M> {
 impl<M> Spacer<M> {
     pub fn new() -> Self {
         Self {
+            width: 0.0,
+            height: 0.0,
+            flex: 0,
+            _marker: PhantomData,
+        }
+    }
+
+    pub fn width(width: f32) -> Self {
+        Self {
+            width,
+            height: 0.0,
+            flex: 0,
+            _marker: PhantomData,
+        }
+    }
+
+    pub fn height(height: f32) -> Self {
+        Self {
+            width: 0.0,
+            height,
             flex: 0,
             _marker: PhantomData,
         }
@@ -26,16 +48,16 @@ impl<M> Spacer<M> {
 impl<M: 'static> Widget<M> for Spacer<M> {
     fn layout(
         &self,
-        _constraints: Constraints,
+        constraints: Constraints,
         _children: &[LayoutNode],
         _text_system: &mut crate::text::TextSystem,
         _theme: &crate::theme::Theme,
     ) -> LayoutResult {
         LayoutResult {
-            size: Size {
-                width: 0.0,
-                height: 0.0,
-            },
+            size: constraints.clamp_size(Size {
+                width: self.width,
+                height: self.height,
+            }),
         }
     }
 

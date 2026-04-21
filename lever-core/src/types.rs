@@ -10,7 +10,7 @@ pub struct Size {
     pub height: f32,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct Rect {
     pub x: f32,
     pub y: f32,
@@ -64,7 +64,7 @@ impl Rect {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct Color {
     pub r: f32,
     pub g: f32,
@@ -114,7 +114,7 @@ impl SideOffsets {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct Gradient {
     pub start: Color,
     pub end: Color,
@@ -126,7 +126,7 @@ impl Gradient {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct BoxShadow {
     pub offset: Point,
     pub blur: f32,

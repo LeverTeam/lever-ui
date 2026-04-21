@@ -1,23 +1,15 @@
 use crate::batch::ColoredVertex;
 use lever_core::types::{Color, Rect};
-use lyon::math::Box2D;
-use lyon::tessellation::*;
 
-pub struct Tessellator {
-    fill_tess: FillTessellator,
-    stroke_tess: StrokeTessellator,
-}
+pub struct Tessellator {}
 
 impl Tessellator {
     pub fn new() -> Self {
-        Self {
-            fill_tess: FillTessellator::new(),
-            stroke_tess: StrokeTessellator::new(),
-        }
+        Self {}
     }
 
     pub fn tessellate_rounded_rect(
-        &mut self,
+        &self,
         rect: Rect,
         radius: f32,
         color: Color,
@@ -27,42 +19,58 @@ impl Tessellator {
         let start_index = vertices.len() as u32;
         let c = color.to_array();
 
-        let mut builder = lyon::path::Path::builder();
-        builder.add_rounded_rectangle(
-            &Box2D::new(
-                lyon::math::point(rect.x, rect.y),
-                lyon::math::point(rect.x + rect.width, rect.y + rect.height),
-            ),
-            &lyon::path::builder::BorderRadii::new(radius),
-            lyon::path::Winding::Positive,
-        );
-        let path = builder.build();
+        let half_w = rect.width / 2.0;
+        let half_h = rect.height / 2.0;
 
-        let mut v_buffers: VertexBuffers<ColoredVertex, u32> = VertexBuffers::new();
+        vertices.push(ColoredVertex {
+            position: [rect.x, rect.y],
+            color: c,
+            color2: c,
+            uv: [-half_w, -half_h],
+            mode: 3.0,
+            size: [rect.width, rect.height],
+            extra: [radius, 0.0, 0.0, 0.0],
+        });
+        vertices.push(ColoredVertex {
+            position: [rect.x + rect.width, rect.y],
+            color: c,
+            color2: c,
+            uv: [half_w, -half_h],
+            mode: 3.0,
+            size: [rect.width, rect.height],
+            extra: [radius, 0.0, 0.0, 0.0],
+        });
+        vertices.push(ColoredVertex {
+            position: [rect.x + rect.width, rect.y + rect.height],
+            color: c,
+            color2: c,
+            uv: [half_w, half_h],
+            mode: 3.0,
+            size: [rect.width, rect.height],
+            extra: [radius, 0.0, 0.0, 0.0],
+        });
+        vertices.push(ColoredVertex {
+            position: [rect.x, rect.y + rect.height],
+            color: c,
+            color2: c,
+            uv: [-half_w, half_h],
+            mode: 3.0,
+            size: [rect.width, rect.height],
+            extra: [radius, 0.0, 0.0, 0.0],
+        });
 
-        let uv = 0.5 / 1024.0;
-        let mut geometry_builder =
-            BuffersBuilder::new(&mut v_buffers, |vertex: FillVertex| ColoredVertex {
-                position: [vertex.position().x, vertex.position().y],
-                color: c,
-                uv: [uv, uv],
-                mode: 1.0,
-                size: [rect.width, rect.height],
-                extra: radius,
-            });
-
-        let _ =
-            self.fill_tess
-                .tessellate_path(&path, &FillOptions::default(), &mut geometry_builder);
-
-        vertices.extend(v_buffers.vertices);
-        for idx in v_buffers.indices {
-            indices.push(start_index + idx);
-        }
+        indices.extend_from_slice(&[
+            start_index,
+            start_index + 1,
+            start_index + 2,
+            start_index,
+            start_index + 2,
+            start_index + 3,
+        ]);
     }
 
     pub fn tessellate_stroke_rect(
-        &mut self,
+        &self,
         rect: Rect,
         radius: f32,
         thickness: f32,
@@ -72,40 +80,56 @@ impl Tessellator {
     ) {
         let start_index = vertices.len() as u32;
         let c = color.to_array();
+        let half_w = rect.width / 2.0;
+        let half_h = rect.height / 2.0;
 
-        let mut builder = lyon::path::Path::builder();
-        builder.add_rounded_rectangle(
-            &Box2D::new(
-                lyon::math::point(rect.x, rect.y),
-                lyon::math::point(rect.x + rect.width, rect.y + rect.height),
-            ),
-            &lyon::path::builder::BorderRadii::new(radius),
-            lyon::path::Winding::Positive,
-        );
-        let path = builder.build();
+        vertices.push(ColoredVertex {
+            position: [rect.x - thickness, rect.y - thickness],
+            color: c,
+            color2: c,
+            uv: [-half_w - thickness, -half_h - thickness],
+            mode: 4.0,
+            size: [rect.width, rect.height],
+            extra: [radius, thickness, 0.0, 0.0],
+        });
+        vertices.push(ColoredVertex {
+            position: [rect.x + rect.width + thickness, rect.y - thickness],
+            color: c,
+            color2: c,
+            uv: [half_w + thickness, -half_h - thickness],
+            mode: 4.0,
+            size: [rect.width, rect.height],
+            extra: [radius, thickness, 0.0, 0.0],
+        });
+        vertices.push(ColoredVertex {
+            position: [
+                rect.x + rect.width + thickness,
+                rect.y + rect.height + thickness,
+            ],
+            color: c,
+            color2: c,
+            uv: [half_w + thickness, half_h + thickness],
+            mode: 4.0,
+            size: [rect.width, rect.height],
+            extra: [radius, thickness, 0.0, 0.0],
+        });
+        vertices.push(ColoredVertex {
+            position: [rect.x - thickness, rect.y + rect.height + thickness],
+            color: c,
+            color2: c,
+            uv: [-half_w - thickness, half_h + thickness],
+            mode: 4.0,
+            size: [rect.width, rect.height],
+            extra: [radius, thickness, 0.0, 0.0],
+        });
 
-        let mut v_buffers: VertexBuffers<ColoredVertex, u32> = VertexBuffers::new();
-
-        let uv = 0.5 / 1024.0;
-        let mut geometry_builder =
-            BuffersBuilder::new(&mut v_buffers, |vertex: StrokeVertex| ColoredVertex {
-                position: [vertex.position().x, vertex.position().y],
-                color: c,
-                uv: [uv, uv],
-                mode: 1.0,
-                size: [rect.width, rect.height],
-                extra: radius,
-            });
-
-        let _ = self.stroke_tess.tessellate_path(
-            &path,
-            &StrokeOptions::default().with_line_width(thickness),
-            &mut geometry_builder,
-        );
-
-        vertices.extend(v_buffers.vertices);
-        for idx in v_buffers.indices {
-            indices.push(start_index + idx);
-        }
+        indices.extend_from_slice(&[
+            start_index,
+            start_index + 1,
+            start_index + 2,
+            start_index,
+            start_index + 2,
+            start_index + 3,
+        ]);
     }
 }

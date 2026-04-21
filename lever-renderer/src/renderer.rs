@@ -10,21 +10,27 @@ const VERT_SHADER_SOURCE: &str = r#"
 #version 330 core
 layout(location = 0) in vec2 a_position;
 layout(location = 1) in vec4 a_color;
-layout(location = 2) in vec2 a_uv;
-layout(location = 3) in float a_mode;
-layout(location = 4) in vec2 a_size;
-layout(location = 5) in float a_extra;
+layout(location = 2) in vec4 a_color2;
+layout(location = 3) in vec2 a_uv;
+layout(location = 4) in float a_mode;
+layout(location = 5) in vec2 a_size;
+layout(location = 6) in vec4 a_extra;
+
 uniform vec2 u_viewport;
+
 out vec4 v_color;
+out vec4 v_color2;
 out vec2 v_uv;
 out float v_mode;
 out vec2 v_size;
-out float v_extra;
+out vec4 v_extra;
+
 void main() {
     vec2 ndc = (a_position / u_viewport) * 2.0 - 1.0;
     ndc.y = -ndc.y;
     gl_Position = vec4(ndc, 0.0, 1.0);
     v_color = a_color;
+    v_color2 = a_color2;
     v_uv = a_uv;
     v_mode = a_mode;
     v_size = a_size;
@@ -35,10 +41,12 @@ void main() {
 const FRAG_SHADER_SOURCE: &str = r#"
 #version 330 core
 in vec4 v_color;
+in vec4 v_color2;
 in vec2 v_uv;
 in float v_mode;
 in vec2 v_size;
-in float v_extra;
+in vec4 v_extra;
+
 uniform sampler2D u_texture;
 out vec4 frag_color;
 
@@ -51,13 +59,26 @@ void main() {
     if (v_mode < 0.5) { // Mode 0: Textured (Text)
         float alpha = texture(u_texture, v_uv).r;
         frag_color = vec4(v_color.rgb, v_color.a * alpha);
-    } else if (v_mode < 1.5) { // Mode 1: Solid / Gradient
+    } else if (v_mode < 1.5) { // Mode 1: Solid / Simple Gradient (Tessellated)
         frag_color = v_color;
     } else if (v_mode < 2.5) { // Mode 2: Shadow
-        // v_uv is pixel distance from center
-        float d = sdRoundedRect(v_uv, v_size * 0.5, 8.0); // TODO: use real radius?
-        float blur = v_extra;
+        float d = sdRoundedRect(v_uv, v_size * 0.5, 8.0);
+        float blur = v_extra.z;
         float alpha = smoothstep(blur, -blur, d);
+        frag_color = vec4(v_color.rgb, v_color.a * alpha);
+    } else if (v_mode < 3.5) { // Mode 3: Rounded Rect + Gradient (SDF)
+        float d = sdRoundedRect(v_uv, v_size * 0.5, v_extra.x);
+        float alpha = smoothstep(0.5, -0.5, d);
+
+        // Gradient interpolation (vertical for now)
+        float t = clamp((v_uv.y / v_size.y) + 0.5, 0.0, 1.0);
+        vec4 color = mix(v_color, v_color2, t);
+
+        frag_color = vec4(color.rgb, color.a * alpha);
+    } else if (v_mode < 4.5) { // Mode 4: Rounded Stroke (SDF)
+        float d = sdRoundedRect(v_uv, v_size * 0.5, v_extra.x);
+        float thickness = v_extra.y;
+        float alpha = smoothstep(0.5, -0.5, abs(d + thickness * 0.5) - thickness * 0.5);
         frag_color = vec4(v_color.rgb, v_color.a * alpha);
     } else {
         frag_color = v_color;
@@ -111,18 +132,34 @@ impl Renderer {
 
             gl.bind_buffer(glow::ARRAY_BUFFER, Some(vbo));
             let stride = std::mem::size_of::<crate::batch::ColoredVertex>() as i32;
+
+            // position: 0 (vec2)
             gl.enable_vertex_attrib_array(0);
             gl.vertex_attrib_pointer_f32(0, 2, glow::FLOAT, false, stride, 0);
+
+            // color: 1 (vec4)
             gl.enable_vertex_attrib_array(1);
             gl.vertex_attrib_pointer_f32(1, 4, glow::FLOAT, false, stride, 8);
+
+            // color2: 2 (vec4)
             gl.enable_vertex_attrib_array(2);
-            gl.vertex_attrib_pointer_f32(2, 2, glow::FLOAT, false, stride, 24);
+            gl.vertex_attrib_pointer_f32(2, 4, glow::FLOAT, false, stride, 24);
+
+            // uv: 3 (vec2)
             gl.enable_vertex_attrib_array(3);
-            gl.vertex_attrib_pointer_f32(3, 1, glow::FLOAT, false, stride, 32);
+            gl.vertex_attrib_pointer_f32(3, 2, glow::FLOAT, false, stride, 40);
+
+            // mode: 4 (float)
             gl.enable_vertex_attrib_array(4);
-            gl.vertex_attrib_pointer_f32(4, 2, glow::FLOAT, false, stride, 36);
+            gl.vertex_attrib_pointer_f32(4, 1, glow::FLOAT, false, stride, 48);
+
+            // size: 5 (vec2)
             gl.enable_vertex_attrib_array(5);
-            gl.vertex_attrib_pointer_f32(5, 1, glow::FLOAT, false, stride, 44);
+            gl.vertex_attrib_pointer_f32(5, 2, glow::FLOAT, false, stride, 52);
+
+            // extra: 6 (vec4)
+            gl.enable_vertex_attrib_array(6);
+            gl.vertex_attrib_pointer_f32(6, 4, glow::FLOAT, false, stride, 60);
 
             gl.bind_buffer(glow::ELEMENT_ARRAY_BUFFER, Some(ibo));
 
@@ -210,12 +247,12 @@ impl Renderer {
                     gradient,
                     radius,
                 } => {
-                    if *radius > 0.0 {
-                        self.batch.push_rounded_rect(*rect, *radius, gradient.start);
-                    } else {
-                        self.batch
-                            .push_gradient_rect(*rect, gradient.start, gradient.end);
-                    }
+                    self.batch.push_rounded_gradient_rect(
+                        *rect,
+                        *radius,
+                        gradient.start,
+                        gradient.end,
+                    );
                 }
                 DrawCommand::Text { pos, glyphs } => {
                     for glyph in glyphs {

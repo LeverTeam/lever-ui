@@ -6,10 +6,11 @@ use lever_core::types::{Color, Rect};
 pub struct ColoredVertex {
     pub position: [f32; 2],
     pub color: [f32; 4],
+    pub color2: [f32; 4],
     pub uv: [f32; 2],
     pub mode: f32,
     pub size: [f32; 2],
-    pub extra: f32,
+    pub extra: [f32; 4],
 }
 
 pub struct RectBatch {
@@ -44,34 +45,104 @@ impl RectBatch {
         self.vertices.push(ColoredVertex {
             position: [x1, y1],
             color: c1,
+            color2: c2,
             uv: [0.0, 0.0],
             mode: 1.0,
             size: [0.0, 0.0],
-            extra: 0.0,
+            extra: [0.0, 0.0, 0.0, 0.0],
         });
         self.vertices.push(ColoredVertex {
             position: [x2, y1],
             color: c1,
+            color2: c2,
             uv: [1.0, 0.0],
             mode: 1.0,
             size: [0.0, 0.0],
-            extra: 0.0,
+            extra: [0.0, 0.0, 0.0, 0.0],
         });
         self.vertices.push(ColoredVertex {
             position: [x2, y2],
-            color: c2,
+            color: c1,
+            color2: c2,
             uv: [1.0, 1.0],
             mode: 1.0,
             size: [0.0, 0.0],
-            extra: 0.0,
+            extra: [0.0, 0.0, 0.0, 0.0],
         });
         self.vertices.push(ColoredVertex {
             position: [x1, y2],
-            color: c2,
+            color: c1,
+            color2: c2,
             uv: [0.0, 1.0],
             mode: 1.0,
             size: [0.0, 0.0],
-            extra: 0.0,
+            extra: [0.0, 0.0, 0.0, 0.0],
+        });
+
+        self.indices.extend_from_slice(&[
+            start_index,
+            start_index + 1,
+            start_index + 2,
+            start_index,
+            start_index + 2,
+            start_index + 3,
+        ]);
+    }
+
+    pub fn push_rounded_gradient_rect(
+        &mut self,
+        rect: Rect,
+        radius: f32,
+        start_color: Color,
+        end_color: Color,
+    ) {
+        let x1 = rect.x;
+        let y1 = rect.y;
+        let x2 = rect.x + rect.width;
+        let y2 = rect.y + rect.height;
+
+        let c1 = start_color.to_array();
+        let c2 = end_color.to_array();
+        let start_index = self.vertices.len() as u32;
+
+        let half_w = rect.width / 2.0;
+        let half_h = rect.height / 2.0;
+
+        self.vertices.push(ColoredVertex {
+            position: [x1, y1],
+            color: c1,
+            color2: c2,
+            uv: [-half_w, -half_h],
+            mode: 3.0,
+            size: [rect.width, rect.height],
+            extra: [radius, 0.0, 0.0, 0.0],
+        });
+        self.vertices.push(ColoredVertex {
+            position: [x2, y1],
+            color: c1,
+            color2: c2,
+            uv: [half_w, -half_h],
+            mode: 3.0,
+            size: [rect.width, rect.height],
+            extra: [radius, 0.0, 0.0, 0.0],
+        });
+        self.vertices.push(ColoredVertex {
+            position: [x2, y2],
+            color: c1,
+            color2: c2,
+            uv: [half_w, half_h],
+            mode: 3.0,
+            size: [rect.width, rect.height],
+            extra: [radius, 0.0, 0.0, 0.0],
+        });
+        self.vertices.push(ColoredVertex {
+            position: [x1, y2],
+            color: c1,
+            color2: c2,
+            uv: [-half_w, half_h],
+            mode: 3.0,
+            size: [rect.width, rect.height],
+            extra: [radius, 0.0, 0.0, 0.0],
         });
 
         self.indices.extend_from_slice(&[
@@ -101,34 +172,38 @@ impl RectBatch {
         self.vertices.push(ColoredVertex {
             position: [x1, y1],
             color: c,
+            color2: c,
             uv: [u1, v1],
             mode: 0.0,
             size: [0.0, 0.0],
-            extra: 0.0,
+            extra: [0.0, 0.0, 0.0, 0.0],
         });
         self.vertices.push(ColoredVertex {
             position: [x2, y1],
             color: c,
+            color2: c,
             uv: [u2, v1],
             mode: 0.0,
             size: [0.0, 0.0],
-            extra: 0.0,
+            extra: [0.0, 0.0, 0.0, 0.0],
         });
         self.vertices.push(ColoredVertex {
             position: [x2, y2],
             color: c,
+            color2: c,
             uv: [u2, v2],
             mode: 0.0,
             size: [0.0, 0.0],
-            extra: 0.0,
+            extra: [0.0, 0.0, 0.0, 0.0],
         });
         self.vertices.push(ColoredVertex {
             position: [x1, y2],
             color: c,
+            color2: c,
             uv: [u1, v2],
             mode: 0.0,
             size: [0.0, 0.0],
-            extra: 0.0,
+            extra: [0.0, 0.0, 0.0, 0.0],
         });
 
         self.indices.extend_from_slice(&[
@@ -141,8 +216,8 @@ impl RectBatch {
         ]);
     }
 
-    pub fn push_shadow(&mut self, rect: Rect, radius: f32, color: Color, blur: f32) {
-        let expansion = blur * 3.0; // Expand enough to show full blur
+    pub fn push_shadow(&mut self, rect: Rect, _radius: f32, color: Color, blur: f32) {
+        let expansion = blur * 3.0;
         let x1 = rect.x - expansion;
         let y1 = rect.y - expansion;
         let x2 = rect.x + rect.width + expansion;
@@ -154,38 +229,41 @@ impl RectBatch {
         let c = color.to_array();
         let start_index = self.vertices.len() as u32;
 
-        // UV here is pixel distance from center
         self.vertices.push(ColoredVertex {
             position: [x1, y1],
             color: c,
+            color2: c,
             uv: [-half_w - expansion, -half_h - expansion],
             mode: 2.0,
             size: [rect.width, rect.height],
-            extra: blur,
+            extra: [0.0, 0.0, blur, 0.0],
         });
         self.vertices.push(ColoredVertex {
             position: [x2, y1],
             color: c,
+            color2: c,
             uv: [half_w + expansion, -half_h - expansion],
             mode: 2.0,
             size: [rect.width, rect.height],
-            extra: blur,
+            extra: [0.0, 0.0, blur, 0.0],
         });
         self.vertices.push(ColoredVertex {
             position: [x2, y2],
             color: c,
+            color2: c,
             uv: [half_w + expansion, half_h + expansion],
             mode: 2.0,
             size: [rect.width, rect.height],
-            extra: blur,
+            extra: [0.0, 0.0, blur, 0.0],
         });
         self.vertices.push(ColoredVertex {
             position: [x1, y2],
             color: c,
+            color2: c,
             uv: [-half_w - expansion, half_h + expansion],
             mode: 2.0,
             size: [rect.width, rect.height],
-            extra: blur,
+            extra: [0.0, 0.0, blur, 0.0],
         });
 
         self.indices.extend_from_slice(&[

@@ -1,10 +1,12 @@
 use crate::draw::DrawList;
 use crate::layout::{Constraints, LayoutNode, LayoutResult};
-use crate::types::{Color, Rect, SideOffsets, Size};
+use crate::types::{BoxShadow, Color, Gradient, Rect, SideOffsets, Size};
 use crate::widget::Widget;
 
 pub struct BoxWidget<M> {
     pub color: Color,
+    pub gradient: Option<Gradient>,
+    pub shadow: Option<BoxShadow>,
     pub radius: f32,
     pub padding: SideOffsets,
     pub width: Option<f32>,
@@ -16,12 +18,24 @@ impl<M> BoxWidget<M> {
     pub fn new(color: Color) -> Self {
         Self {
             color,
+            gradient: None,
+            shadow: None,
             radius: 0.0,
             padding: SideOffsets::default(),
             width: None,
             height: None,
             child: None,
         }
+    }
+
+    pub fn with_gradient(mut self, gradient: Gradient) -> Self {
+        self.gradient = Some(gradient);
+        self
+    }
+
+    pub fn with_shadow(mut self, shadow: BoxShadow) -> Self {
+        self.shadow = Some(shadow);
+        self
     }
 
     pub fn with_radius(mut self, radius: f32) -> Self {
@@ -86,7 +100,18 @@ impl<M: 'static> Widget<M> for BoxWidget<M> {
         theme: &crate::theme::Theme,
         focused_id: Option<&str>,
     ) {
-        draw_list.rounded_rect(rect, self.color, self.radius);
+        if let Some(gradient) = self.gradient {
+            if let Some(shadow) = self.shadow {
+                draw_list.shadowed_rect(rect, Color::rgba(0.0, 0.0, 0.0, 0.0), self.radius, shadow);
+            }
+            draw_list.gradient_rect(rect, gradient, self.radius);
+        } else {
+            if let Some(shadow) = self.shadow {
+                draw_list.shadowed_rect(rect, self.color, self.radius, shadow);
+            } else {
+                draw_list.rounded_rect(rect, self.color, self.radius);
+            }
+        }
 
         if let Some(child) = &self.child {
             let child_rect = Rect {

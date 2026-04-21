@@ -47,6 +47,7 @@ struct AppHandler<A: App> {
     text_system: lever_core::text::TextSystem,
     theme: lever_core::theme::Theme,
     focused_id: Option<String>,
+    last_frame: std::time::Instant,
 }
 
 impl<A: App> AppHandler<A> {
@@ -62,6 +63,7 @@ impl<A: App> AppHandler<A> {
             text_system: lever_core::text::TextSystem::new(),
             theme: lever_core::theme::Theme::dark(),
             focused_id: None,
+            last_frame: std::time::Instant::now(),
         }
     }
 
@@ -328,6 +330,12 @@ impl<A: App> ApplicationHandler for AppHandler<A> {
     }
 
     fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
+        let now = std::time::Instant::now();
+        let dt = now.duration_since(self.last_frame).as_secs_f32();
+        self.last_frame = now;
+
+        self.app.tick(dt);
+
         if let Some(window) = &self.window {
             window.request_redraw();
         }
