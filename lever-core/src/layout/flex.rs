@@ -49,45 +49,95 @@ impl FlexLayout {
         text_system: &mut crate::text::TextSystem,
         theme: &crate::theme::Theme,
     ) -> (LayoutResult, Vec<Rect>) {
-        let mut child_results = Vec::with_capacity(children.len());
-        let mut total_main = 0.0;
+        let mut child_results = vec![
+            LayoutResult {
+                size: Size {
+                    width: 0.0,
+                    height: 0.0
+                }
+            };
+            children.len()
+        ];
+        let mut total_flex = 0;
+        let mut used_main = 0.0;
         let mut max_cross: f32 = 0.0;
 
-        let child_constraints = match self.direction {
-            FlexDirection::Row => Constraints::loose(constraints.max_width, constraints.max_height),
-            FlexDirection::Column => {
-                Constraints::loose(constraints.max_width, constraints.max_height)
+        for (i, child) in children.iter().enumerate() {
+            let flex = child.flex();
+            if flex > 0 {
+                total_flex += flex;
+            } else {
+                let res = child.layout(
+                    Constraints::loose(constraints.max_width, constraints.max_height),
+                    &[],
+                    text_system,
+                    theme,
+                );
+                child_results[i] = res;
+                match self.direction {
+                    FlexDirection::Row => {
+                        used_main += res.size.width;
+                        max_cross = max_cross.max(res.size.height);
+                    }
+                    FlexDirection::Column => {
+                        used_main += res.size.height;
+                        max_cross = max_cross.max(res.size.width);
+                    }
+                }
             }
-        };
+        }
 
-        for child in children {
-            let res = child.layout(child_constraints, &[], text_system, theme);
-            child_results.push(res);
+        if children.len() > 1 {
+            used_main += self.spacing * (children.len() - 1) as f32;
+        }
 
+        if total_flex > 0 {
+            let available_main = match self.direction {
+                FlexDirection::Row => constraints.max_width,
+                FlexDirection::Column => constraints.max_height,
+            };
+            let remaining_main = (available_main - used_main).max(0.0);
+            let main_per_flex = remaining_main / total_flex as f32;
+
+            for (i, child) in children.iter().enumerate() {
+                let flex = child.flex();
+                if flex > 0 {
+                    let child_main = main_per_flex * flex as f32;
+                    let child_constraints = match self.direction {
+                        FlexDirection::Row => {
+                            Constraints::tight(child_main, constraints.max_height)
+                        }
+                        FlexDirection::Column => {
+                            Constraints::tight(constraints.max_width, child_main)
+                        }
+                    };
+                    let res = child.layout(child_constraints, &[], text_system, theme);
+                    child_results[i] = res;
+                    match self.direction {
+                        FlexDirection::Row => max_cross = max_cross.max(res.size.height),
+                        FlexDirection::Column => max_cross = max_cross.max(res.size.width),
+                    }
+                }
+            }
+        }
+
+        let final_main = if total_flex > 0 {
             match self.direction {
-                FlexDirection::Row => {
-                    total_main += res.size.width;
-                    max_cross = max_cross.max(res.size.height);
-                }
-                FlexDirection::Column => {
-                    total_main += res.size.height;
-                    max_cross = max_cross.max(res.size.width);
-                }
+                FlexDirection::Row => constraints.max_width,
+                FlexDirection::Column => constraints.max_height,
             }
-        }
-
-        if !children.is_empty() {
-            total_main += self.spacing * (children.len() - 1) as f32;
-        }
+        } else {
+            used_main
+        };
 
         let final_size = constraints.clamp_size(match self.direction {
             FlexDirection::Row => Size {
-                width: total_main,
+                width: final_main,
                 height: max_cross,
             },
             FlexDirection::Column => Size {
                 width: max_cross,
-                height: total_main,
+                height: final_main,
             },
         });
 

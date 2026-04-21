@@ -32,4 +32,8 @@ pub trait Widget {
     ) -> bool {
         false
     }
+
+    fn flex(&self) -> u32 {
+        0
+    }
 }
