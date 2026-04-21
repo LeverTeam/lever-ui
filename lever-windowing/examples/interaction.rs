@@ -1,27 +1,55 @@
-use lever_core::types::Color;
-use lever_core::widgets::{Button, Flex};
-use lever_windowing::{AppConfig, Application};
+use lever_core::app::App;
+use lever_core::types::{Color, SideOffsets};
+use lever_core::widgets::{BoxWidget, Button, Center, Flex, Spacer};
+use lever_windowing::application::Application;
+use lever_windowing::config::AppConfig;
+
+struct InteractionApp;
+
+#[derive(Debug, Clone)]
+enum Message {
+    ButtonClicked(u32),
+}
+
+impl App for InteractionApp {
+    type Message = Message;
+
+    fn update(&mut self, message: Self::Message) {
+        match message {
+            Message::ButtonClicked(id) => println!("Button {} clicked!", id),
+        }
+    }
+
+    fn view(&self) -> Box<dyn lever_core::widget::Widget<Self::Message>> {
+        Box::new(Center::new(Box::new(
+            BoxWidget::new(Color::rgb(0.12, 0.12, 0.12))
+                .with_radius(8.0)
+                .with_padding(SideOffsets::all(30.0))
+                .with_child(Box::new(Flex::column(vec![
+                    Box::new(
+                        Button::new("Primary Action")
+                            .with_color(Color::rgb(0.2, 0.4, 0.8))
+                            .on_click(|| Message::ButtonClicked(1)),
+                    ),
+                    Box::new(Spacer::height(15.0)),
+                    Box::new(
+                        Button::new("Secondary Action")
+                            .with_color(Color::rgb(0.4, 0.4, 0.4))
+                            .on_click(|| Message::ButtonClicked(2)),
+                    ),
+                ]))),
+        )))
+    }
+}
 
 fn main() {
+    let app = InteractionApp;
     let config = AppConfig {
         title: "Lever UI - Interaction".to_string(),
-        ..Default::default()
+        width: 800,
+        height: 600,
+        clear_color: Color::rgb(0.05, 0.05, 0.05),
     };
-
-    let app = Application::new(
-        config,
-        Box::new(|_| {
-            let button1 = Button::new()
-                .with_colors(Color::rgb(0.3, 0.4, 0.6), Color::rgb(0.4, 0.5, 0.8))
-                .with_click(|| println!("Button 1 clicked"));
-
-            let button2 = Button::new()
-                .with_colors(Color::rgb(0.6, 0.3, 0.3), Color::rgb(0.8, 0.4, 0.4))
-                .with_click(|| println!("Button 2 clicked"));
-
-            Box::new(Flex::column(vec![Box::new(button1), Box::new(button2)]))
-        }),
-    );
-
-    app.run();
+    let application = Application::new(config, app);
+    application.run();
 }

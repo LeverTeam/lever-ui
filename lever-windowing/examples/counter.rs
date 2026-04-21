@@ -1,48 +1,67 @@
+use lever_core::app::App;
 use lever_core::types::{Color, SideOffsets};
-use lever_core::widgets::{BoxWidget, Button, Flex, Label};
-use lever_windowing::{AppConfig, Application};
-use std::sync::atomic::{AtomicI32, Ordering};
-use std::sync::Arc;
+use lever_core::widgets::{BoxWidget, Button, Center, Flex, Label, Spacer};
+use lever_windowing::application::Application;
+use lever_windowing::config::AppConfig;
+
+struct CounterApp {
+    count: i32,
+}
+
+#[derive(Debug, Clone)]
+enum Message {
+    Increment,
+    Decrement,
+}
+
+impl App for CounterApp {
+    type Message = Message;
+
+    fn update(&mut self, message: Self::Message) {
+        match message {
+            Message::Increment => self.count += 1,
+            Message::Decrement => self.count -= 1,
+        }
+    }
+
+    fn view(&self) -> Box<dyn lever_core::widget::Widget<Self::Message>> {
+        Box::new(Center::new(Box::new(
+            BoxWidget::new(Color::rgb(0.1, 0.1, 0.1))
+                .with_radius(12.0)
+                .with_padding(SideOffsets::all(40.0))
+                .with_child(Box::new(Flex::column(vec![
+                    Box::new(Label::new(
+                        format!("Count: {}", self.count),
+                        48.0,
+                        Color::rgb(1.0, 1.0, 1.0),
+                    )),
+                    Box::new(Spacer::height(20.0)),
+                    Box::new(Flex::row(vec![
+                        Box::new(
+                            Button::new("Decrement")
+                                .with_color(Color::rgb(0.8, 0.2, 0.2))
+                                .on_click(|| Message::Decrement),
+                        ),
+                        Box::new(Spacer::width(10.0)),
+                        Box::new(
+                            Button::new("Increment")
+                                .with_color(Color::rgb(0.2, 0.6, 0.2))
+                                .on_click(|| Message::Increment),
+                        ),
+                    ])),
+                ]))),
+        )))
+    }
+}
 
 fn main() {
+    let app = CounterApp { count: 0 };
     let config = AppConfig {
-        title: "Lever UI - Counter Example".to_string(),
-        width: 400,
-        height: 300,
-        ..Default::default()
+        title: "Lever Counter Demo".to_string(),
+        width: 800,
+        height: 600,
+        clear_color: Color::rgb(0.05, 0.05, 0.05),
     };
-
-    let counter = Arc::new(AtomicI32::new(0));
-
-    let app = Application::new(
-        config,
-        Box::new(move |_cursor_pos| {
-            let count = counter.load(Ordering::Relaxed);
-
-            let label = Label::new(format!("Count: {}", count), 48.0);
-
-            let btn = Button::new()
-                .with_colors(Color::rgb(0.2, 0.6, 0.2), Color::rgb(0.3, 0.8, 0.3))
-                .with_click({
-                    let counter = counter.clone();
-                    move || {
-                        counter.fetch_add(1, Ordering::Relaxed);
-                        println!(
-                            "Button clicked! New count: {}",
-                            counter.load(Ordering::Relaxed)
-                        );
-                    }
-                });
-
-            let content = Flex::column(vec![Box::new(label), Box::new(btn)]);
-
-            Box::new(
-                BoxWidget::new(Color::rgb(0.1, 0.1, 0.1))
-                    .with_padding(SideOffsets::all(40.0))
-                    .with_child(Box::new(content)),
-            )
-        }),
-    );
-
-    app.run();
+    let application = Application::new(config, app);
+    application.run();
 }
