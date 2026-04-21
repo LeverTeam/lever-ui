@@ -1,4 +1,4 @@
-use crate::types::{Color, Rect};
+use crate::types::{Color, Point, Rect};
 
 #[derive(Debug, Clone)]
 pub enum DrawCommand {
@@ -31,6 +31,10 @@ pub enum DrawCommand {
         tint: Color,
         uv: [f32; 4],
     },
+    PushOpacity(f32),
+    PopOpacity,
+    PushTranslation(Point),
+    PopTranslation,
 }
 
 pub struct DrawList {
@@ -119,6 +123,22 @@ impl DrawList {
             tint,
             uv,
         });
+    }
+
+    pub fn push_opacity(&mut self, opacity: f32) {
+        self.commands.push(DrawCommand::PushOpacity(opacity));
+    }
+
+    pub fn pop_opacity(&mut self) {
+        self.commands.push(DrawCommand::PopOpacity);
+    }
+
+    pub fn push_translation(&mut self, offset: Point) {
+        self.commands.push(DrawCommand::PushTranslation(offset));
+    }
+
+    pub fn pop_translation(&mut self) {
+        self.commands.push(DrawCommand::PopTranslation);
     }
 
     pub fn commands(&self) -> &[DrawCommand] {

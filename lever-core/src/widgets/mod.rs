@@ -1,3 +1,4 @@
+mod animated;
 mod box_widget;
 mod button;
 mod center;
@@ -10,6 +11,7 @@ mod spacer;
 mod stack;
 mod text_input;
 
+pub use animated::*;
 pub use box_widget::*;
 pub use button::*;
 pub use center::*;

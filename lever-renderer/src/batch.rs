@@ -2,7 +2,7 @@ use crate::tessellation::Tessellator;
 use lever_core::types::{Color, Rect};
 
 #[repr(C)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct ColoredVertex {
     pub position: [f32; 2],
     pub color: [f32; 4],
@@ -155,7 +155,7 @@ impl RectBatch {
         ]);
     }
 
-    pub fn push_textured_rect(&mut self, rect: Rect, color: Color, uv_rect: [f32; 4]) {
+    pub fn push_textured_rect(&mut self, rect: Rect, color: Color, uv_rect: [f32; 4], mode: f32) {
         let x1 = rect.x;
         let y1 = rect.y;
         let x2 = rect.x + rect.width;
@@ -174,7 +174,7 @@ impl RectBatch {
             color: c,
             color2: c,
             uv: [u1, v1],
-            mode: 0.0,
+            mode,
             size: [0.0, 0.0],
             extra: [0.0, 0.0, 0.0, 0.0],
         });
@@ -183,7 +183,7 @@ impl RectBatch {
             color: c,
             color2: c,
             uv: [u2, v1],
-            mode: 0.0,
+            mode,
             size: [0.0, 0.0],
             extra: [0.0, 0.0, 0.0, 0.0],
         });
@@ -192,7 +192,7 @@ impl RectBatch {
             color: c,
             color2: c,
             uv: [u2, v2],
-            mode: 0.0,
+            mode,
             size: [0.0, 0.0],
             extra: [0.0, 0.0, 0.0, 0.0],
         });
@@ -201,7 +201,7 @@ impl RectBatch {
             color: c,
             color2: c,
             uv: [u1, v2],
-            mode: 0.0,
+            mode,
             size: [0.0, 0.0],
             extra: [0.0, 0.0, 0.0, 0.0],
         });
@@ -214,6 +214,14 @@ impl RectBatch {
             start_index + 2,
             start_index + 3,
         ]);
+    }
+
+    pub fn push_glyph_rect(&mut self, rect: Rect, uv_rect: [f32; 4], color: Color) {
+        self.push_textured_rect(rect, color, uv_rect, 0.0);
+    }
+
+    pub fn push_image_rect(&mut self, rect: Rect, uv_rect: [f32; 4], color: Color) {
+        self.push_textured_rect(rect, color, uv_rect, 4.0);
     }
 
     pub fn push_shadow(&mut self, rect: Rect, _radius: f32, color: Color, blur: f32) {
@@ -307,6 +315,10 @@ impl RectBatch {
 
     pub fn indices(&self) -> &[u32] {
         &self.indices
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.vertices.is_empty()
     }
 
     pub fn clear(&mut self) {

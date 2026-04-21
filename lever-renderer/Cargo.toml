@@ -11,3 +11,4 @@ thiserror = "1.0"
 lyon = "1.0.19"
 fontdue = "0.9.3"
 guillotiere = "0.7.0"
+bytemuck = { version = "1.14", features = ["derive"] }

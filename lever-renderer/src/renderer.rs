@@ -17,6 +17,8 @@ layout(location = 5) in vec2 a_size;
 layout(location = 6) in vec4 a_extra;
 
 uniform vec2 u_viewport;
+uniform float u_opacity;
+uniform vec2 u_offset;
 
 out vec4 v_color;
 out vec4 v_color2;
@@ -26,15 +28,15 @@ out vec2 v_size;
 out vec4 v_extra;
 
 void main() {
-    vec2 ndc = (a_position / u_viewport) * 2.0 - 1.0;
-    ndc.y = -ndc.y;
-    gl_Position = vec4(ndc, 0.0, 1.0);
     v_color = a_color;
+    v_color.a *= u_opacity;
     v_color2 = a_color2;
+    v_color2.a *= u_opacity;
     v_uv = a_uv;
     v_mode = a_mode;
     v_size = a_size;
     v_extra = a_extra;
+    gl_Position = vec4(((a_position + u_offset) / u_viewport * 2.0 - 1.0) * vec2(1.0, -1.0), 0.0, 1.0);
 }
 "#;
 
@@ -59,27 +61,25 @@ void main() {
     if (v_mode < 0.5) { // Mode 0: Textured (Text)
         float alpha = texture(u_texture, v_uv).r;
         frag_color = vec4(v_color.rgb, v_color.a * alpha);
-    } else if (v_mode < 1.5) { // Mode 1: Solid / Simple Gradient (Tessellated)
-        frag_color = v_color;
+    } else if (v_mode < 1.5) { // Mode 1: Rounded Rect
+        vec2 p = v_uv * v_size - v_size * 0.5;
+        float d = sdRoundedRect(p, v_size * 0.5, v_extra.x);
+        float alpha = 1.0 - smoothstep(0.0, 1.0, d);
+        frag_color = vec4(v_color.rgb, v_color.a * alpha);
     } else if (v_mode < 2.5) { // Mode 2: Shadow
-        float d = sdRoundedRect(v_uv, v_size * 0.5, 8.0);
-        float blur = v_extra.z;
-        float alpha = smoothstep(blur, -blur, d);
+        vec2 p = v_uv * v_size - v_size * 0.5;
+        float d = sdRoundedRect(p, v_size * 0.5, v_extra.x);
+        float alpha = 1.0 - smoothstep(-v_extra.y, v_extra.y, d);
         frag_color = vec4(v_color.rgb, v_color.a * alpha);
-    } else if (v_mode < 3.5) { // Mode 3: Rounded Rect + Gradient (SDF)
-        float d = sdRoundedRect(v_uv, v_size * 0.5, v_extra.x);
-        float alpha = smoothstep(0.5, -0.5, d);
-
-        // Gradient interpolation (vertical for now)
-        float t = clamp((v_uv.y / v_size.y) + 0.5, 0.0, 1.0);
-        vec4 color = mix(v_color, v_color2, t);
-
+    } else if (v_mode < 3.5) { // Mode 3: Gradient Rounded Rect
+        vec2 p = v_uv * v_size - v_size * 0.5;
+        float d = sdRoundedRect(p, v_size * 0.5, v_extra.x);
+        float alpha = 1.0 - smoothstep(0.0, 1.0, d);
+        vec4 color = mix(v_color, v_color2, v_uv.y);
         frag_color = vec4(color.rgb, color.a * alpha);
-    } else if (v_mode < 4.5) { // Mode 4: Rounded Stroke (SDF)
-        float d = sdRoundedRect(v_uv, v_size * 0.5, v_extra.x);
-        float thickness = v_extra.y;
-        float alpha = smoothstep(0.5, -0.5, abs(d + thickness * 0.5) - thickness * 0.5);
-        frag_color = vec4(v_color.rgb, v_color.a * alpha);
+    } else if (v_mode < 4.5) { // Mode 4: Raw Image
+        vec4 tex_color = texture(u_texture, v_uv);
+        frag_color = tex_color * v_color;
     } else {
         frag_color = v_color;
     }
@@ -94,11 +94,17 @@ pub struct Renderer {
     rect_ibo: glow::Buffer,
     u_viewport: glow::UniformLocation,
     u_texture: glow::UniformLocation,
+    u_opacity: glow::UniformLocation,
+    u_offset: glow::UniformLocation,
     batch: RectBatch,
     viewport_size: Size,
     atlas: crate::atlas::GlyphAtlas,
     font: fontdue::Font,
     clip_stack: Vec<Rect>,
+    opacity_stack: Vec<f32>,
+    current_opacity: f32,
+    translation_stack: Vec<lever_core::types::Point>,
+    current_translation: lever_core::types::Point,
 }
 
 impl Renderer {
@@ -118,6 +124,14 @@ impl Renderer {
             let u_texture = gl
                 .get_uniform_location(program, "u_texture")
                 .ok_or(RendererError::GlAllocation("Texture Uniform"))?;
+
+            let u_opacity = gl
+                .get_uniform_location(program, "u_opacity")
+                .ok_or(RendererError::GlAllocation("Opacity Uniform"))?;
+
+            let u_offset = gl
+                .get_uniform_location(program, "u_offset")
+                .ok_or(RendererError::GlAllocation("Offset Uniform"))?;
 
             let vao = gl
                 .create_vertex_array()
@@ -163,7 +177,6 @@ impl Renderer {
             gl.vertex_attrib_pointer_f32(6, 4, glow::FLOAT, false, stride, 60);
 
             gl.bind_buffer(glow::ELEMENT_ARRAY_BUFFER, Some(ibo));
-
             gl.bind_vertex_array(None);
 
             let atlas = crate::atlas::GlyphAtlas::new(gl.clone(), 1024, 1024);
@@ -182,6 +195,8 @@ impl Renderer {
                 rect_ibo: ibo,
                 u_viewport,
                 u_texture,
+                u_opacity,
+                u_offset,
                 batch: RectBatch::new(),
                 viewport_size: Size {
                     width: 0.0,
@@ -190,6 +205,10 @@ impl Renderer {
                 atlas,
                 font,
                 clip_stack: Vec::new(),
+                opacity_stack: Vec::new(),
+                current_opacity: 1.0,
+                translation_stack: Vec::new(),
+                current_translation: lever_core::types::Point { x: 0.0, y: 0.0 },
             })
         }
     }
@@ -197,6 +216,10 @@ impl Renderer {
     pub fn begin_frame(&mut self, viewport: Size, clear_color: Color) {
         self.viewport_size = viewport;
         self.clip_stack.clear();
+        self.opacity_stack.clear();
+        self.current_opacity = 1.0;
+        self.translation_stack.clear();
+        self.current_translation = lever_core::types::Point { x: 0.0, y: 0.0 };
         unsafe {
             self.gl
                 .viewport(0, 0, viewport.width as i32, viewport.height as i32);
@@ -209,6 +232,9 @@ impl Renderer {
             self.gl.use_program(Some(self.rect_program));
             self.gl
                 .uniform_2_f32(Some(&self.u_viewport), viewport.width, viewport.height);
+            self.gl
+                .uniform_1_f32(Some(&self.u_opacity), self.current_opacity);
+            self.gl.uniform_2_f32(Some(&self.u_offset), 0.0, 0.0);
 
             self.gl.active_texture(glow::TEXTURE0);
             self.gl
@@ -221,11 +247,151 @@ impl Renderer {
         }
     }
 
+    fn flush(&mut self) {
+        if self.batch.is_empty() {
+            return;
+        }
+
+        unsafe {
+            self.gl.bind_vertex_array(Some(self.rect_vao));
+            self.gl.bind_buffer(glow::ARRAY_BUFFER, Some(self.rect_vbo));
+            self.gl.buffer_data_u8_slice(
+                glow::ARRAY_BUFFER,
+                bytemuck::cast_slice(self.batch.vertices()),
+                glow::DYNAMIC_DRAW,
+            );
+
+            self.gl
+                .bind_buffer(glow::ELEMENT_ARRAY_BUFFER, Some(self.rect_ibo));
+            self.gl.buffer_data_u8_slice(
+                glow::ELEMENT_ARRAY_BUFFER,
+                bytemuck::cast_slice(self.batch.indices()),
+                glow::DYNAMIC_DRAW,
+            );
+
+            self.gl.draw_elements(
+                glow::TRIANGLES,
+                self.batch.indices().len() as i32,
+                glow::UNSIGNED_INT,
+                0,
+            );
+
+            self.gl.bind_vertex_array(None);
+        }
+        self.batch.clear();
+    }
+
     pub fn render(&mut self, draw_list: &DrawList) {
         self.batch.clear();
 
         for command in draw_list.commands() {
             match command {
+                DrawCommand::PushOpacity(opacity) => {
+                    self.flush();
+                    self.opacity_stack.push(self.current_opacity);
+                    self.current_opacity *= opacity;
+                    unsafe {
+                        self.gl
+                            .uniform_1_f32(Some(&self.u_opacity), self.current_opacity);
+                    }
+                }
+                DrawCommand::PopOpacity => {
+                    self.flush();
+                    self.current_opacity = self.opacity_stack.pop().unwrap_or(1.0);
+                    unsafe {
+                        self.gl
+                            .uniform_1_f32(Some(&self.u_opacity), self.current_opacity);
+                    }
+                }
+                DrawCommand::PushTranslation(offset) => {
+                    self.flush();
+                    self.translation_stack.push(self.current_translation);
+                    self.current_translation.x += offset.x;
+                    self.current_translation.y += offset.y;
+                    unsafe {
+                        self.gl.uniform_2_f32(
+                            Some(&self.u_offset),
+                            self.current_translation.x,
+                            self.current_translation.y,
+                        );
+                    }
+                }
+                DrawCommand::PopTranslation => {
+                    self.flush();
+                    self.current_translation = self
+                        .translation_stack
+                        .pop()
+                        .unwrap_or(lever_core::types::Point { x: 0.0, y: 0.0 });
+                    unsafe {
+                        self.gl.uniform_2_f32(
+                            Some(&self.u_offset),
+                            self.current_translation.x,
+                            self.current_translation.y,
+                        );
+                    }
+                }
+                DrawCommand::ClipPush(rect) => {
+                    self.flush();
+
+                    let new_clip = if let Some(last) = self.clip_stack.last() {
+                        last.intersect(*rect).unwrap_or(Rect {
+                            x: 0.0,
+                            y: 0.0,
+                            width: 0.0,
+                            height: 0.0,
+                        })
+                    } else {
+                        *rect
+                    };
+                    self.clip_stack.push(new_clip);
+                    unsafe {
+                        self.gl.enable(glow::SCISSOR_TEST);
+                        self.gl.scissor(
+                            new_clip.x as i32,
+                            (self.viewport_size.height - (new_clip.y + new_clip.height)) as i32,
+                            new_clip.width as i32,
+                            new_clip.height as i32,
+                        );
+                    }
+                }
+                DrawCommand::ClipPop => {
+                    self.flush();
+                    self.clip_stack.pop();
+                    if let Some(new_clip) = self.clip_stack.last() {
+                        unsafe {
+                            self.gl.enable(glow::SCISSOR_TEST);
+                            self.gl.scissor(
+                                new_clip.x as i32,
+                                (self.viewport_size.height - (new_clip.y + new_clip.height)) as i32,
+                                new_clip.width as i32,
+                                new_clip.height as i32,
+                            );
+                        }
+                    } else {
+                        unsafe {
+                            self.gl.disable(glow::SCISSOR_TEST);
+                        }
+                    }
+                }
+                DrawCommand::Image {
+                    rect,
+                    texture,
+                    tint,
+                    uv,
+                } => {
+                    self.flush();
+                    unsafe {
+                        self.gl
+                            .bind_texture(glow::TEXTURE_2D, Some(std::mem::transmute(texture.0)));
+                    }
+                    self.batch.push_image_rect(*rect, *uv, *tint);
+                    self.flush();
+                    // Restore atlas texture
+                    unsafe {
+                        self.gl
+                            .bind_texture(glow::TEXTURE_2D, Some(self.atlas.texture()));
+                    }
+                }
                 DrawCommand::RoundedRect {
                     rect,
                     color,
@@ -283,124 +449,22 @@ impl Renderer {
                                 height: region.height as f32,
                             };
 
-                            self.batch
-                                .push_textured_rect(glyph_rect, glyph.color, uv_rect);
-                        }
-                    }
-                }
-                DrawCommand::ClipPush(rect) => {
-                    self.flush();
-                    let current = self.clip_stack.last().copied().unwrap_or(Rect {
-                        x: 0.0,
-                        y: 0.0,
-                        width: self.viewport_size.width,
-                        height: self.viewport_size.height,
-                    });
-
-                    let intersected = current.intersect(*rect).unwrap_or(Rect {
-                        x: 0.0,
-                        y: 0.0,
-                        width: 0.0,
-                        height: 0.0,
-                    });
-
-                    self.clip_stack.push(intersected);
-                    self.apply_clip(intersected);
-                }
-                DrawCommand::ClipPop => {
-                    self.flush();
-                    self.clip_stack.pop();
-                    if let Some(rect) = self.clip_stack.last().copied() {
-                        self.apply_clip(rect);
-                    } else {
-                        unsafe {
-                            self.gl.disable(glow::SCISSOR_TEST);
+                            self.batch.push_glyph_rect(glyph_rect, uv_rect, glyph.color);
                         }
                     }
                 }
                 DrawCommand::Stroke {
                     rect,
-                    color,
                     radius,
                     thickness,
+                    color,
                 } => {
                     self.batch.push_stroke(*rect, *radius, *thickness, *color);
-                }
-                DrawCommand::Image {
-                    rect,
-                    texture,
-                    tint,
-                    uv,
-                } => {
-                    self.flush();
-                    unsafe {
-                        self.gl.bind_texture(
-                            glow::TEXTURE_2D,
-                            Some(glow::NativeTexture(
-                                std::num::NonZeroU32::new(texture.0).unwrap(),
-                            )),
-                        );
-                    }
-                    self.batch.push_textured_rect(*rect, *tint, *uv);
-                    self.flush();
-                    unsafe {
-                        self.gl
-                            .bind_texture(glow::TEXTURE_2D, Some(self.atlas.texture()));
-                    }
                 }
             }
         }
 
         self.flush();
-    }
-
-    fn apply_clip(&self, rect: Rect) {
-        unsafe {
-            self.gl.enable(glow::SCISSOR_TEST);
-            let y = self.viewport_size.height - (rect.y + rect.height);
-            self.gl.scissor(
-                rect.x as i32,
-                y as i32,
-                rect.width as i32,
-                rect.height as i32,
-            );
-        }
-    }
-
-    fn flush(&mut self) {
-        let vertices = self.batch.vertices();
-        let indices = self.batch.indices();
-        if vertices.is_empty() || indices.is_empty() {
-            return;
-        }
-
-        unsafe {
-            self.gl.bind_vertex_array(Some(self.rect_vao));
-
-            self.gl.bind_buffer(glow::ARRAY_BUFFER, Some(self.rect_vbo));
-            let v_data: &[u8] = std::slice::from_raw_parts(
-                vertices.as_ptr() as *const u8,
-                vertices.len() * std::mem::size_of::<ColoredVertex>(),
-            );
-            self.gl
-                .buffer_data_u8_slice(glow::ARRAY_BUFFER, v_data, glow::DYNAMIC_DRAW);
-
-            self.gl
-                .bind_buffer(glow::ELEMENT_ARRAY_BUFFER, Some(self.rect_ibo));
-            let i_data: &[u8] = std::slice::from_raw_parts(
-                indices.as_ptr() as *const u8,
-                indices.len() * std::mem::size_of::<u32>(),
-            );
-            self.gl
-                .buffer_data_u8_slice(glow::ELEMENT_ARRAY_BUFFER, i_data, glow::DYNAMIC_DRAW);
-
-            self.gl
-                .draw_elements(glow::TRIANGLES, indices.len() as i32, glow::UNSIGNED_INT, 0);
-
-            self.gl.bind_vertex_array(None);
-        }
-
-        self.batch.clear();
     }
 
     pub fn end_frame(&mut self) {
