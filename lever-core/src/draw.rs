@@ -7,6 +7,11 @@ pub enum DrawCommand {
         color: Color,
         corner_radius: f32,
     },
+    RoundedRect {
+        rect: Rect,
+        color: Color,
+        radius: f32,
+    },
     ClipPush(Rect),
     ClipPop,
 }
@@ -27,6 +32,14 @@ impl DrawList {
             rect,
             color,
             corner_radius,
+        });
+    }
+
+    pub fn rounded_rect(&mut self, rect: Rect, color: Color, radius: f32) {
+        self.commands.push(DrawCommand::RoundedRect {
+            rect,
+            color,
+            radius,
         });
     }
 

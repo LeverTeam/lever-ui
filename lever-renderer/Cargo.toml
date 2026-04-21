@@ -7,3 +7,4 @@ edition = "2021"
 lever-core = { path = "../lever-core" }
 glow = "0.13"
 thiserror = "1.0"
+lyon = "1.0.19"

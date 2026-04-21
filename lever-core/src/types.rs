@@ -76,3 +76,31 @@ impl Color {
         [self.r, self.g, self.b, self.a]
     }
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct SideOffsets {
+    pub top: f32,
+    pub right: f32,
+    pub bottom: f32,
+    pub left: f32,
+}
+
+impl SideOffsets {
+    pub const fn new(top: f32, right: f32, bottom: f32, left: f32) -> Self {
+        Self {
+            top,
+            right,
+            bottom,
+            left,
+        }
+    }
+
+    pub const fn all(value: f32) -> Self {
+        Self {
+            top: value,
+            right: value,
+            bottom: value,
+            left: value,
+        }
+    }
+}

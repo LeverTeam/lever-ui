@@ -1,4 +1,7 @@
-use crate::types::Size;
+pub mod flex;
+
+use crate::types::{Rect, Size};
+pub use flex::*;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Constraints {
@@ -38,4 +41,18 @@ impl Constraints {
 #[derive(Debug, Clone, Copy)]
 pub struct LayoutResult {
     pub size: Size,
+}
+
+pub struct LayoutNode {
+    pub rect: Rect,
+    pub children: Vec<LayoutNode>,
+}
+
+impl LayoutNode {
+    pub fn new(rect: Rect) -> Self {
+        Self {
+            rect,
+            children: Vec::new(),
+        }
+    }
 }

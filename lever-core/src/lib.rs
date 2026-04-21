@@ -3,6 +3,7 @@ pub mod event;
 pub mod layout;
 pub mod types;
 pub mod widget;
+pub mod widgets;
 
 pub use draw::*;
 pub use event::*;

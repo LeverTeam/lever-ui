@@ -12,16 +12,22 @@ use winit::window::{Window, WindowAttributes, WindowId};
 use crate::config::AppConfig;
 use crate::context::GlContext;
 use lever_core::draw::DrawList;
-use lever_core::types::Size;
+use lever_core::types::{Rect, Size};
 use lever_renderer::Renderer;
+
+use lever_core::layout::{Constraints, LayoutNode};
+use lever_core::widget::Widget;
 
 pub struct Application {
     config: AppConfig,
-    build_ui: Box<dyn Fn(&mut DrawList)>,
+    build_ui: Box<dyn Fn(lever_core::types::Point) -> Box<dyn Widget>>,
 }
 
 impl Application {
-    pub fn new(config: AppConfig, build_ui: Box<dyn Fn(&mut DrawList)>) -> Self {
+    pub fn new(
+        config: AppConfig,
+        build_ui: Box<dyn Fn(lever_core::types::Point) -> Box<dyn Widget>>,
+    ) -> Self {
         Self { config, build_ui }
     }
 
@@ -34,16 +40,20 @@ impl Application {
 
 struct AppHandler {
     config: AppConfig,
-    build_ui: Box<dyn Fn(&mut DrawList)>,
+    build_ui: Box<dyn Fn(lever_core::types::Point) -> Box<dyn Widget>>,
 
     window: Option<Arc<Window>>,
     gl_context: Option<GlContext>,
     renderer: Option<Renderer>,
     draw_list: DrawList,
+    cursor_pos: lever_core::types::Point,
 }
 
 impl AppHandler {
-    fn new(config: AppConfig, build_ui: Box<dyn Fn(&mut DrawList)>) -> Self {
+    fn new(
+        config: AppConfig,
+        build_ui: Box<dyn Fn(lever_core::types::Point) -> Box<dyn Widget>>,
+    ) -> Self {
         Self {
             config,
             build_ui,
@@ -51,6 +61,7 @@ impl AppHandler {
             gl_context: None,
             renderer: None,
             draw_list: DrawList::new(),
+            cursor_pos: lever_core::types::Point { x: 0.0, y: 0.0 },
         }
     }
 }
@@ -151,6 +162,53 @@ impl ApplicationHandler for AppHandler {
             WindowEvent::CloseRequested => {
                 event_loop.exit();
             }
+            WindowEvent::CursorMoved { position, .. } => {
+                self.cursor_pos = lever_core::types::Point {
+                    x: position.x as f32,
+                    y: position.y as f32,
+                };
+                let _fe = lever_core::event::FrameworkEvent::PointerMove {
+                    position: self.cursor_pos,
+                };
+            }
+            WindowEvent::MouseInput { state, button, .. } => {
+                let _fe = match state {
+                    winit::event::ElementState::Pressed => {
+                        lever_core::event::FrameworkEvent::PointerDown {
+                            position: lever_core::types::Point { x: 0.0, y: 0.0 },
+                            button: match button {
+                                winit::event::MouseButton::Left => {
+                                    lever_core::event::PointerButton::Primary
+                                }
+                                winit::event::MouseButton::Right => {
+                                    lever_core::event::PointerButton::Secondary
+                                }
+                                winit::event::MouseButton::Middle => {
+                                    lever_core::event::PointerButton::Middle
+                                }
+                                _ => lever_core::event::PointerButton::Primary,
+                            },
+                        }
+                    }
+                    winit::event::ElementState::Released => {
+                        lever_core::event::FrameworkEvent::PointerUp {
+                            position: lever_core::types::Point { x: 0.0, y: 0.0 },
+                            button: match button {
+                                winit::event::MouseButton::Left => {
+                                    lever_core::event::PointerButton::Primary
+                                }
+                                winit::event::MouseButton::Right => {
+                                    lever_core::event::PointerButton::Secondary
+                                }
+                                winit::event::MouseButton::Middle => {
+                                    lever_core::event::PointerButton::Middle
+                                }
+                                _ => lever_core::event::PointerButton::Primary,
+                            },
+                        }
+                    }
+                };
+            }
             WindowEvent::Resized(size) => {
                 if let (Some(gl_context), Some(window)) = (&self.gl_context, &self.window) {
                     if size.width > 0 && size.height > 0 {
@@ -174,7 +232,23 @@ impl ApplicationHandler for AppHandler {
 
                     renderer.begin_frame(viewport, self.config.clear_color);
                     self.draw_list.clear();
-                    (self.build_ui)(&mut self.draw_list);
+
+                    let root_widget = (self.build_ui)(self.cursor_pos);
+
+                    // Layout pass
+                    let constraints = Constraints::tight(viewport.width, viewport.height);
+                    let _res = root_widget.layout(constraints, &[]);
+
+                    root_widget.draw(
+                        Rect {
+                            x: 0.0,
+                            y: 0.0,
+                            width: viewport.width,
+                            height: viewport.height,
+                        },
+                        &mut self.draw_list,
+                    );
+
                     renderer.render(&self.draw_list);
                     renderer.end_frame();
 

@@ -1,3 +1,4 @@
+pub mod routing;
 use crate::types::Point;
 
 #[derive(Debug, Clone, Copy, PartialEq)]

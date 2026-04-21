@@ -34,8 +34,10 @@ pub struct Renderer {
     rect_program: glow::Program,
     rect_vao: glow::VertexArray,
     rect_vbo: glow::Buffer,
+    rect_ibo: glow::Buffer,
     u_viewport: glow::UniformLocation,
     batch: RectBatch,
+    viewport_size: Size,
 }
 
 impl Renderer {
@@ -58,17 +60,20 @@ impl Renderer {
             let vbo = gl
                 .create_buffer()
                 .map_err(|_| RendererError::GlAllocation("VBO"))?;
+            let ibo = gl
+                .create_buffer()
+                .map_err(|_| RendererError::GlAllocation("IBO"))?;
 
             gl.bind_vertex_array(Some(vao));
+
             gl.bind_buffer(glow::ARRAY_BUFFER, Some(vbo));
-
             let stride = std::mem::size_of::<ColoredVertex>() as i32;
-
             gl.enable_vertex_attrib_array(0);
             gl.vertex_attrib_pointer_f32(0, 2, glow::FLOAT, false, stride, 0);
-
             gl.enable_vertex_attrib_array(1);
             gl.vertex_attrib_pointer_f32(1, 4, glow::FLOAT, false, stride, 8);
+
+            gl.bind_buffer(glow::ELEMENT_ARRAY_BUFFER, Some(ibo));
 
             gl.bind_vertex_array(None);
 
@@ -77,13 +82,19 @@ impl Renderer {
                 rect_program: program,
                 rect_vao: vao,
                 rect_vbo: vbo,
+                rect_ibo: ibo,
                 u_viewport,
                 batch: RectBatch::new(),
+                viewport_size: Size {
+                    width: 0.0,
+                    height: 0.0,
+                },
             })
         }
     }
 
     pub fn begin_frame(&mut self, viewport: Size, clear_color: Color) {
+        self.viewport_size = viewport;
         unsafe {
             self.gl
                 .viewport(0, 0, viewport.width as i32, viewport.height as i32);
@@ -105,10 +116,24 @@ impl Renderer {
                 DrawCommand::ColoredRect { rect, color, .. } => {
                     self.batch.push_rect(*rect, *color);
                 }
-                DrawCommand::ClipPush(_rect) => {
+                DrawCommand::RoundedRect {
+                    rect,
+                    color,
+                    radius,
+                } => {
+                    self.batch.push_rounded_rect(*rect, *radius, *color);
+                }
+                DrawCommand::ClipPush(rect) => {
                     self.flush();
                     unsafe {
                         self.gl.enable(glow::SCISSOR_TEST);
+                        let y = self.viewport_size.height - (rect.y + rect.height);
+                        self.gl.scissor(
+                            rect.x as i32,
+                            y as i32,
+                            rect.width as i32,
+                            rect.height as i32,
+                        );
                     }
                 }
                 DrawCommand::ClipPop => {
@@ -125,23 +150,33 @@ impl Renderer {
 
     fn flush(&mut self) {
         let vertices = self.batch.vertices();
-        if vertices.is_empty() {
+        let indices = self.batch.indices();
+        if vertices.is_empty() || indices.is_empty() {
             return;
         }
 
         unsafe {
             self.gl.bind_vertex_array(Some(self.rect_vao));
-            self.gl.bind_buffer(glow::ARRAY_BUFFER, Some(self.rect_vbo));
 
-            let data: &[u8] = std::slice::from_raw_parts(
+            self.gl.bind_buffer(glow::ARRAY_BUFFER, Some(self.rect_vbo));
+            let v_data: &[u8] = std::slice::from_raw_parts(
                 vertices.as_ptr() as *const u8,
                 vertices.len() * std::mem::size_of::<ColoredVertex>(),
             );
+            self.gl
+                .buffer_data_u8_slice(glow::ARRAY_BUFFER, v_data, glow::DYNAMIC_DRAW);
 
             self.gl
-                .buffer_data_u8_slice(glow::ARRAY_BUFFER, data, glow::DYNAMIC_DRAW);
+                .bind_buffer(glow::ELEMENT_ARRAY_BUFFER, Some(self.rect_ibo));
+            let i_data: &[u8] = std::slice::from_raw_parts(
+                indices.as_ptr() as *const u8,
+                indices.len() * std::mem::size_of::<u32>(),
+            );
             self.gl
-                .draw_arrays(glow::TRIANGLES, 0, vertices.len() as i32);
+                .buffer_data_u8_slice(glow::ELEMENT_ARRAY_BUFFER, i_data, glow::DYNAMIC_DRAW);
+
+            self.gl
+                .draw_elements(glow::TRIANGLES, indices.len() as i32, glow::UNSIGNED_INT, 0);
 
             self.gl.bind_vertex_array(None);
         }
@@ -158,6 +193,7 @@ impl Drop for Renderer {
             self.gl.delete_program(self.rect_program);
             self.gl.delete_vertex_array(self.rect_vao);
             self.gl.delete_buffer(self.rect_vbo);
+            self.gl.delete_buffer(self.rect_ibo);
         }
     }
 }
