@@ -6,12 +6,13 @@ use lever_windowing::config::AppConfig;
 
 #[derive(Debug, Clone)]
 pub enum Message {
-    TextChanged(String),
+    TextChanged(String, usize),
     ButtonClicked(String),
 }
 
 struct DemoApp {
     input_text: String,
+    cursor_index: usize,
 }
 
 impl App for DemoApp {
@@ -19,8 +20,9 @@ impl App for DemoApp {
 
     fn update(&mut self, message: Self::Message) {
         match message {
-            Message::TextChanged(new_text) => {
+            Message::TextChanged(new_text, new_cursor) => {
                 self.input_text = new_text;
+                self.cursor_index = new_cursor;
             }
             Message::ButtonClicked(name) => {
                 println!("Button clicked: {}", name);
@@ -40,7 +42,7 @@ impl App for DemoApp {
                             Color::rgb(1.0, 1.0, 1.0),
                         )),
                         Box::new(Label::new(
-                            "Type something below:",
+                            "Type something below (Supports Arrows/Home/End/Shift):",
                             18.0,
                             Color::rgba(1.0, 1.0, 1.0, 0.6),
                         )),
@@ -48,7 +50,8 @@ impl App for DemoApp {
                             TextInput::new("input-1")
                                 .with_placeholder("Type here...")
                                 .with_text(&self.input_text)
-                                .on_input(|text| Message::TextChanged(text)),
+                                .with_cursor(self.cursor_index)
+                                .on_input(|text, cursor| Message::TextChanged(text, cursor)),
                         ),
                         Box::new(
                             Flex::row(vec![
@@ -110,6 +113,7 @@ fn main() {
 
     let app = DemoApp {
         input_text: String::new(),
+        cursor_index: 0,
     };
 
     let application = Application::new(config, app);

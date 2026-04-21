@@ -19,19 +19,25 @@ use lever_renderer::Renderer;
 use lever_core::layout::Constraints;
 
 pub struct Application<A: App> {
-    config: AppConfig,
-    app: A,
+    event_loop: EventLoop<()>,
+    handler: AppHandler<A>,
 }
 
 impl<A: App> Application<A> {
     pub fn new(config: AppConfig, app: A) -> Self {
-        Self { config, app }
+        let event_loop = EventLoop::new().expect("Failed to create event loop");
+        let handler = AppHandler::new(config, app);
+        Self {
+            event_loop,
+            handler,
+        }
     }
 
     pub fn run(self) {
-        let event_loop = EventLoop::new().expect("Failed to create event loop");
-        let mut handler = AppHandler::new(self.config, self.app);
-        event_loop.run_app(&mut handler).expect("Failed to run app");
+        let mut handler = self.handler;
+        self.event_loop
+            .run_app(&mut handler)
+            .expect("Failed to run app");
     }
 }
 
@@ -48,6 +54,8 @@ struct AppHandler<A: App> {
     theme: lever_core::theme::Theme,
     focused_id: Option<String>,
     last_frame: std::time::Instant,
+    modifiers: lever_core::event::Modifiers,
+    is_initialized: bool,
 }
 
 impl<A: App> AppHandler<A> {
@@ -64,6 +72,8 @@ impl<A: App> AppHandler<A> {
             theme: lever_core::theme::Theme::dark(),
             focused_id: None,
             last_frame: std::time::Instant::now(),
+            modifiers: lever_core::event::Modifiers::default(),
+            is_initialized: false,
         }
     }
 
@@ -177,6 +187,12 @@ impl<A: App> ApplicationHandler for AppHandler<A> {
             display: gl_display,
         });
         self.renderer = Some(renderer);
+
+        if !self.is_initialized {
+            let mut ctx = lever_core::app::Context::new(self.renderer.as_mut().unwrap());
+            self.app.init(&mut ctx);
+            self.is_initialized = true;
+        }
     }
 
     fn window_event(
@@ -255,6 +271,14 @@ impl<A: App> ApplicationHandler for AppHandler<A> {
                 };
                 self.dispatch_event(event);
             }
+            WindowEvent::ModifiersChanged(modifiers) => {
+                self.modifiers = lever_core::event::Modifiers {
+                    shift: modifiers.state().shift_key(),
+                    ctrl: modifiers.state().control_key(),
+                    alt: modifiers.state().alt_key(),
+                    logo: modifiers.state().super_key(),
+                };
+            }
             WindowEvent::KeyboardInput { event, .. } => {
                 if event.state == winit::event::ElementState::Pressed {
                     if let Some(text) = event.text.as_ref() {
@@ -275,20 +299,40 @@ impl<A: App> ApplicationHandler for AppHandler<A> {
                     }
 
                     // Map key for FrameworkEvent::KeyDown
+                    use winit::keyboard::{KeyCode, PhysicalKey};
                     let key = match event.physical_key {
-                        winit::keyboard::PhysicalKey::Code(winit::keyboard::KeyCode::Backspace) => {
+                        PhysicalKey::Code(KeyCode::Backspace) => {
                             Some(lever_core::event::Key::Backspace)
                         }
-                        winit::keyboard::PhysicalKey::Code(winit::keyboard::KeyCode::Enter) => {
-                            Some(lever_core::event::Key::Enter)
+                        PhysicalKey::Code(KeyCode::Delete) => Some(lever_core::event::Key::Delete),
+                        PhysicalKey::Code(KeyCode::Enter) => Some(lever_core::event::Key::Enter),
+                        PhysicalKey::Code(KeyCode::Escape) => Some(lever_core::event::Key::Escape),
+                        PhysicalKey::Code(KeyCode::Tab) => Some(lever_core::event::Key::Tab),
+                        PhysicalKey::Code(KeyCode::Space) => Some(lever_core::event::Key::Space),
+                        PhysicalKey::Code(KeyCode::ArrowLeft) => Some(lever_core::event::Key::Left),
+                        PhysicalKey::Code(KeyCode::ArrowRight) => {
+                            Some(lever_core::event::Key::Right)
                         }
+                        PhysicalKey::Code(KeyCode::ArrowUp) => Some(lever_core::event::Key::Up),
+                        PhysicalKey::Code(KeyCode::ArrowDown) => Some(lever_core::event::Key::Down),
+                        PhysicalKey::Code(KeyCode::Home) => Some(lever_core::event::Key::Home),
+                        PhysicalKey::Code(KeyCode::End) => Some(lever_core::event::Key::End),
+                        PhysicalKey::Code(KeyCode::PageUp) => Some(lever_core::event::Key::PageUp),
+                        PhysicalKey::Code(KeyCode::PageDown) => {
+                            Some(lever_core::event::Key::PageDown)
+                        }
+                        PhysicalKey::Code(KeyCode::KeyA) => Some(lever_core::event::Key::A),
+                        PhysicalKey::Code(KeyCode::KeyC) => Some(lever_core::event::Key::C),
+                        PhysicalKey::Code(KeyCode::KeyV) => Some(lever_core::event::Key::V),
+                        PhysicalKey::Code(KeyCode::KeyX) => Some(lever_core::event::Key::X),
+                        PhysicalKey::Code(KeyCode::KeyZ) => Some(lever_core::event::Key::Z),
                         _ => None,
                     };
 
                     if let Some(key) = key {
                         self.dispatch_event(lever_core::event::FrameworkEvent::KeyDown {
                             key,
-                            modifiers: lever_core::event::Modifiers::default(),
+                            modifiers: self.modifiers,
                         });
                     }
                 }

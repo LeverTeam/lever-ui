@@ -1,5 +1,6 @@
 use lever_core::types::Color;
 
+#[derive(Debug, Clone)]
 pub struct AppConfig {
     pub title: String,
     pub width: u32,

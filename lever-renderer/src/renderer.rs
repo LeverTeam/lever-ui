@@ -3,7 +3,7 @@ use crate::error::RendererError;
 use crate::shader::{compile_shader, link_program};
 use glow::{Context, HasContext};
 use lever_core::draw::{DrawCommand, DrawList};
-use lever_core::types::{Color, Rect, Size};
+use lever_core::types::{Color, Rect, Size, TextureId};
 use std::sync::Arc;
 
 const VERT_SHADER_SOURCE: &str = r#"
@@ -407,6 +407,60 @@ impl Renderer {
         unsafe {
             self.gl.disable(glow::SCISSOR_TEST);
         }
+    }
+
+    pub fn create_texture(&mut self, width: u32, height: u32, data: &[u8]) -> TextureId {
+        use glow::HasContext;
+        unsafe {
+            let tex = self.gl.create_texture().unwrap();
+            self.gl.bind_texture(glow::TEXTURE_2D, Some(tex));
+
+            self.gl.tex_image_2d(
+                glow::TEXTURE_2D,
+                0,
+                glow::RGBA as i32,
+                width as i32,
+                height as i32,
+                0,
+                glow::RGBA,
+                glow::UNSIGNED_BYTE,
+                Some(data),
+            );
+
+            self.gl.tex_parameter_i32(
+                glow::TEXTURE_2D,
+                glow::TEXTURE_MIN_FILTER,
+                glow::LINEAR as i32,
+            );
+            self.gl.tex_parameter_i32(
+                glow::TEXTURE_2D,
+                glow::TEXTURE_MAG_FILTER,
+                glow::LINEAR as i32,
+            );
+            self.gl.tex_parameter_i32(
+                glow::TEXTURE_2D,
+                glow::TEXTURE_WRAP_S,
+                glow::CLAMP_TO_EDGE as i32,
+            );
+            self.gl.tex_parameter_i32(
+                glow::TEXTURE_2D,
+                glow::TEXTURE_WRAP_T,
+                glow::CLAMP_TO_EDGE as i32,
+            );
+
+            // Re-bind atlas
+            self.gl
+                .bind_texture(glow::TEXTURE_2D, Some(self.atlas.texture()));
+
+            TextureId(tex.0.get())
+        }
+    }
+}
+
+impl lever_core::app::TextureLoader for Renderer {
+    fn load_texture(&mut self, bytes: &[u8]) -> TextureId {
+        let image_data = crate::assets::load_image_from_bytes(bytes).unwrap();
+        self.create_texture(image_data.width, image_data.height, &image_data.rgba)
     }
 }
 

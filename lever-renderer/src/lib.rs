@@ -1,3 +1,4 @@
+pub mod assets;
 pub mod atlas;
 pub mod batch;
 pub mod error;
