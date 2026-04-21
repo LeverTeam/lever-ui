@@ -19,10 +19,11 @@ fn main() {
         Box::new(move |_cursor_pos| {
             let count = counter.load(Ordering::Relaxed);
 
-            let label = Label::new(format!("Count: {}", count), 48.0, Color::rgb(1.0, 1.0, 1.0));
+            let label = Label::new(format!("Count: {}", count), 48.0);
 
-            let btn =
-                Button::new(Color::rgb(0.2, 0.6, 0.2), Color::rgb(0.3, 0.8, 0.3)).with_click({
+            let btn = Button::new()
+                .with_colors(Color::rgb(0.2, 0.6, 0.2), Color::rgb(0.3, 0.8, 0.3))
+                .with_click({
                     let counter = counter.clone();
                     move || {
                         counter.fetch_add(1, Ordering::Relaxed);

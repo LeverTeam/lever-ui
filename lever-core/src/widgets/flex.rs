@@ -30,9 +30,10 @@ impl Widget for Flex {
         constraints: Constraints,
         _children: &[LayoutNode],
         text_system: &mut crate::text::TextSystem,
+        theme: &crate::theme::Theme,
     ) -> LayoutResult {
         let solver = FlexLayout::new(self.direction);
-        let (result, _) = solver.layout(constraints, &self.children, text_system);
+        let (result, _) = solver.layout(constraints, &self.children, text_system, theme);
         result
     }
 
@@ -41,19 +42,21 @@ impl Widget for Flex {
         rect: Rect,
         draw_list: &mut DrawList,
         text_system: &mut crate::text::TextSystem,
+        theme: &crate::theme::Theme,
     ) {
         let solver = FlexLayout::new(self.direction);
         let (_result, child_rects) = solver.layout(
             Constraints::tight(rect.width, rect.height),
             &self.children,
             text_system,
+            theme,
         );
 
         for (i, child) in self.children.iter().enumerate() {
             let mut child_rect = child_rects[i];
             child_rect.x += rect.x;
             child_rect.y += rect.y;
-            child.draw(child_rect, draw_list, text_system);
+            child.draw(child_rect, draw_list, text_system, theme);
         }
     }
 
@@ -62,12 +65,14 @@ impl Widget for Flex {
         event: &crate::event::FrameworkEvent,
         rect: Rect,
         text_system: &mut crate::text::TextSystem,
+        theme: &crate::theme::Theme,
     ) -> bool {
         let solver = FlexLayout::new(self.direction);
         let (_result, child_rects) = solver.layout(
             Constraints::tight(rect.width, rect.height),
             &self.children,
             text_system,
+            theme,
         );
 
         for (i, child) in self.children.iter_mut().enumerate() {
@@ -75,7 +80,7 @@ impl Widget for Flex {
             child_rect.x += rect.x;
             child_rect.y += rect.y;
 
-            if child.on_event(event, child_rect, text_system) {
+            if child.on_event(event, child_rect, text_system, theme) {
                 return true;
             }
         }

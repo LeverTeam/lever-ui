@@ -47,6 +47,7 @@ impl Widget for BoxWidget {
         constraints: Constraints,
         _children: &[LayoutNode],
         text_system: &mut crate::text::TextSystem,
+        theme: &crate::theme::Theme,
     ) -> LayoutResult {
         let padding_w = self.padding.left + self.padding.right;
         let padding_h = self.padding.top + self.padding.bottom;
@@ -59,7 +60,9 @@ impl Widget for BoxWidget {
         };
 
         let child_size = if let Some(child) = &self.child {
-            child.layout(content_constraints, &[], text_system).size
+            child
+                .layout(content_constraints, &[], text_system, theme)
+                .size
         } else {
             crate::types::Size {
                 width: 0.0,
@@ -80,6 +83,7 @@ impl Widget for BoxWidget {
         rect: Rect,
         draw_list: &mut DrawList,
         text_system: &mut crate::text::TextSystem,
+        theme: &crate::theme::Theme,
     ) {
         if self.radius > 0.0 {
             draw_list.rounded_rect(rect, self.color, self.radius);
@@ -94,7 +98,7 @@ impl Widget for BoxWidget {
                 width: rect.width - (self.padding.left + self.padding.right),
                 height: rect.height - (self.padding.top + self.padding.bottom),
             };
-            child.draw(child_rect, draw_list, text_system);
+            child.draw(child_rect, draw_list, text_system, theme);
         }
     }
 
@@ -103,6 +107,7 @@ impl Widget for BoxWidget {
         event: &crate::event::FrameworkEvent,
         rect: Rect,
         text_system: &mut crate::text::TextSystem,
+        theme: &crate::theme::Theme,
     ) -> bool {
         if let Some(child) = &mut self.child {
             let child_rect = Rect {
@@ -111,7 +116,7 @@ impl Widget for BoxWidget {
                 width: rect.width - (self.padding.left + self.padding.right),
                 height: rect.height - (self.padding.top + self.padding.bottom),
             };
-            return child.on_event(event, child_rect, text_system);
+            return child.on_event(event, child_rect, text_system, theme);
         }
         false
     }

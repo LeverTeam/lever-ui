@@ -2,6 +2,7 @@ pub mod draw;
 pub mod event;
 pub mod layout;
 pub mod text;
+pub mod theme;
 pub mod types;
 pub mod widget;
 pub mod widgets;

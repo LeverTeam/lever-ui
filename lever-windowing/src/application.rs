@@ -15,7 +15,7 @@ use lever_core::draw::DrawList;
 use lever_core::types::{Rect, Size};
 use lever_renderer::Renderer;
 
-use lever_core::layout::{Constraints, LayoutNode};
+use lever_core::layout::Constraints;
 use lever_core::widget::Widget;
 
 pub struct Application {
@@ -48,6 +48,7 @@ struct AppHandler {
     draw_list: DrawList,
     cursor_pos: lever_core::types::Point,
     text_system: lever_core::text::TextSystem,
+    theme: lever_core::theme::Theme,
 }
 
 impl AppHandler {
@@ -64,6 +65,7 @@ impl AppHandler {
             draw_list: DrawList::new(),
             cursor_pos: lever_core::types::Point { x: 0.0, y: 0.0 },
             text_system: lever_core::text::TextSystem::new(),
+            theme: lever_core::theme::Theme::dark(),
         }
     }
 
@@ -77,7 +79,7 @@ impl AppHandler {
                 width: size.width as f32,
                 height: size.height as f32,
             };
-            root_widget.on_event(&event, rect, &mut self.text_system);
+            root_widget.on_event(&event, rect, &mut self.text_system, &self.theme);
         }
     }
 }
@@ -227,6 +229,19 @@ impl ApplicationHandler for AppHandler {
                 };
                 self.dispatch_event(event);
             }
+            WindowEvent::KeyboardInput { event, .. } => {
+                if event.state == winit::event::ElementState::Pressed {
+                    if let winit::keyboard::PhysicalKey::Code(winit::keyboard::KeyCode::KeyT) =
+                        event.physical_key
+                    {
+                        if self.theme.background.r > 0.5 {
+                            self.theme = lever_core::theme::Theme::dark();
+                        } else {
+                            self.theme = lever_core::theme::Theme::light();
+                        }
+                    }
+                }
+            }
             WindowEvent::Resized(size) => {
                 if let (Some(gl_context), Some(window)) = (&self.gl_context, &self.window) {
                     if size.width > 0 && size.height > 0 {
@@ -248,14 +263,15 @@ impl ApplicationHandler for AppHandler {
                         height: size.height as f32,
                     };
 
-                    renderer.begin_frame(viewport, self.config.clear_color);
+                    renderer.begin_frame(viewport, self.theme.background);
                     self.draw_list.clear();
 
                     let root_widget = (self.build_ui)(self.cursor_pos);
 
                     // Layout pass
                     let constraints = Constraints::tight(viewport.width, viewport.height);
-                    let _res = root_widget.layout(constraints, &[], &mut self.text_system);
+                    let _res =
+                        root_widget.layout(constraints, &[], &mut self.text_system, &self.theme);
 
                     root_widget.draw(
                         Rect {
@@ -266,6 +282,7 @@ impl ApplicationHandler for AppHandler {
                         },
                         &mut self.draw_list,
                         &mut self.text_system,
+                        &self.theme,
                     );
 
                     renderer.render(&self.draw_list);

@@ -13,12 +13,8 @@ fn main() {
     let app = Application::new(
         config,
         Box::new(|_| {
-            let label1 = Label::new("Hello, Lever UI!", 48.0, Color::rgb(1.0, 1.0, 1.0));
-            let label2 = Label::new(
-                "Unified GPU Atlas Batching",
-                24.0,
-                Color::rgb(0.8, 0.8, 0.8),
-            );
+            let label1 = Label::new("Hello, Lever UI!", 48.0);
+            let label2 = Label::new("Unified GPU Atlas Batching", 24.0);
 
             let content = Flex::column(vec![Box::new(label1), Box::new(label2)]);
 
