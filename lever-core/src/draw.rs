@@ -25,6 +25,12 @@ pub enum DrawCommand {
         radius: f32,
         thickness: f32,
     },
+    Image {
+        rect: Rect,
+        texture: crate::types::TextureId,
+        tint: Color,
+        uv: [f32; 4],
+    },
 }
 
 pub struct DrawList {
@@ -97,6 +103,21 @@ impl DrawList {
             color,
             radius,
             thickness,
+        });
+    }
+
+    pub fn textured_rect(
+        &mut self,
+        rect: Rect,
+        texture: crate::types::TextureId,
+        tint: Color,
+        uv: [f32; 4],
+    ) {
+        self.commands.push(DrawCommand::Image {
+            rect,
+            texture,
+            tint,
+            uv,
         });
     }
 

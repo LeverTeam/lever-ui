@@ -142,3 +142,6 @@ impl BoxShadow {
         }
     }
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub struct TextureId(pub u32);

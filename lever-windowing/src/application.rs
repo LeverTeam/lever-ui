@@ -238,6 +238,23 @@ impl<A: App> ApplicationHandler for AppHandler<A> {
                 };
                 self.dispatch_event(event);
             }
+            WindowEvent::MouseWheel { delta, .. } => {
+                let delta = match delta {
+                    winit::event::MouseScrollDelta::LineDelta(x, y) => lever_core::types::Point {
+                        x: x * 60.0,
+                        y: -y * 60.0,
+                    },
+                    winit::event::MouseScrollDelta::PixelDelta(pos) => lever_core::types::Point {
+                        x: pos.x as f32,
+                        y: pos.y as f32,
+                    },
+                };
+                let event = lever_core::event::FrameworkEvent::Scroll {
+                    position: self.cursor_pos,
+                    delta,
+                };
+                self.dispatch_event(event);
+            }
             WindowEvent::KeyboardInput { event, .. } => {
                 if event.state == winit::event::ElementState::Pressed {
                     if let Some(text) = event.text.as_ref() {

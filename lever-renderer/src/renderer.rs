@@ -3,7 +3,7 @@ use crate::error::RendererError;
 use crate::shader::{compile_shader, link_program};
 use glow::{Context, HasContext};
 use lever_core::draw::{DrawCommand, DrawList};
-use lever_core::types::{Color, Size};
+use lever_core::types::{Color, Rect, Size};
 use std::sync::Arc;
 
 const VERT_SHADER_SOURCE: &str = r#"
@@ -98,6 +98,7 @@ pub struct Renderer {
     viewport_size: Size,
     atlas: crate::atlas::GlyphAtlas,
     font: fontdue::Font,
+    clip_stack: Vec<Rect>,
 }
 
 impl Renderer {
@@ -188,18 +189,22 @@ impl Renderer {
                 },
                 atlas,
                 font,
+                clip_stack: Vec::new(),
             })
         }
     }
 
     pub fn begin_frame(&mut self, viewport: Size, clear_color: Color) {
         self.viewport_size = viewport;
+        self.clip_stack.clear();
         unsafe {
             self.gl
                 .viewport(0, 0, viewport.width as i32, viewport.height as i32);
             self.gl
                 .clear_color(clear_color.r, clear_color.g, clear_color.b, clear_color.a);
             self.gl.clear(glow::COLOR_BUFFER_BIT);
+
+            self.gl.disable(glow::SCISSOR_TEST);
 
             self.gl.use_program(Some(self.rect_program));
             self.gl
@@ -285,21 +290,32 @@ impl Renderer {
                 }
                 DrawCommand::ClipPush(rect) => {
                     self.flush();
-                    unsafe {
-                        self.gl.enable(glow::SCISSOR_TEST);
-                        let y = self.viewport_size.height - (rect.y + rect.height);
-                        self.gl.scissor(
-                            rect.x as i32,
-                            y as i32,
-                            rect.width as i32,
-                            rect.height as i32,
-                        );
-                    }
+                    let current = self.clip_stack.last().copied().unwrap_or(Rect {
+                        x: 0.0,
+                        y: 0.0,
+                        width: self.viewport_size.width,
+                        height: self.viewport_size.height,
+                    });
+
+                    let intersected = current.intersect(*rect).unwrap_or(Rect {
+                        x: 0.0,
+                        y: 0.0,
+                        width: 0.0,
+                        height: 0.0,
+                    });
+
+                    self.clip_stack.push(intersected);
+                    self.apply_clip(intersected);
                 }
                 DrawCommand::ClipPop => {
                     self.flush();
-                    unsafe {
-                        self.gl.disable(glow::SCISSOR_TEST);
+                    self.clip_stack.pop();
+                    if let Some(rect) = self.clip_stack.last().copied() {
+                        self.apply_clip(rect);
+                    } else {
+                        unsafe {
+                            self.gl.disable(glow::SCISSOR_TEST);
+                        }
                     }
                 }
                 DrawCommand::Stroke {
@@ -310,10 +326,45 @@ impl Renderer {
                 } => {
                     self.batch.push_stroke(*rect, *radius, *thickness, *color);
                 }
+                DrawCommand::Image {
+                    rect,
+                    texture,
+                    tint,
+                    uv,
+                } => {
+                    self.flush();
+                    unsafe {
+                        self.gl.bind_texture(
+                            glow::TEXTURE_2D,
+                            Some(glow::NativeTexture(
+                                std::num::NonZeroU32::new(texture.0).unwrap(),
+                            )),
+                        );
+                    }
+                    self.batch.push_textured_rect(*rect, *tint, *uv);
+                    self.flush();
+                    unsafe {
+                        self.gl
+                            .bind_texture(glow::TEXTURE_2D, Some(self.atlas.texture()));
+                    }
+                }
             }
         }
 
         self.flush();
+    }
+
+    fn apply_clip(&self, rect: Rect) {
+        unsafe {
+            self.gl.enable(glow::SCISSOR_TEST);
+            let y = self.viewport_size.height - (rect.y + rect.height);
+            self.gl.scissor(
+                rect.x as i32,
+                y as i32,
+                rect.width as i32,
+                rect.height as i32,
+            );
+        }
     }
 
     fn flush(&mut self) {
@@ -352,7 +403,11 @@ impl Renderer {
         self.batch.clear();
     }
 
-    pub fn end_frame(&mut self) {}
+    pub fn end_frame(&mut self) {
+        unsafe {
+            self.gl.disable(glow::SCISSOR_TEST);
+        }
+    }
 }
 
 impl Drop for Renderer {
