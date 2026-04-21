@@ -104,3 +104,32 @@ impl SideOffsets {
         }
     }
 }
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Gradient {
+    pub start: Color,
+    pub end: Color,
+}
+
+impl Gradient {
+    pub fn new(start: Color, end: Color) -> Self {
+        Self { start, end }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct BoxShadow {
+    pub offset: Point,
+    pub blur: f32,
+    pub color: Color,
+}
+
+impl BoxShadow {
+    pub fn new(offset: Point, blur: f32, color: Color) -> Self {
+        Self {
+            offset,
+            blur,
+            color,
+        }
+    }
+}

@@ -11,15 +11,18 @@ const VERT_SHADER_SOURCE: &str = r#"
 layout(location = 0) in vec2 a_position;
 layout(location = 1) in vec4 a_color;
 layout(location = 2) in vec2 a_uv;
+layout(location = 3) in float a_mode;
 uniform vec2 u_viewport;
 out vec4 v_color;
 out vec2 v_uv;
+out float v_mode;
 void main() {
     vec2 ndc = (a_position / u_viewport) * 2.0 - 1.0;
     ndc.y = -ndc.y;
     gl_Position = vec4(ndc, 0.0, 1.0);
     v_color = a_color;
     v_uv = a_uv;
+    v_mode = a_mode;
 }
 "#;
 
@@ -27,11 +30,31 @@ const FRAG_SHADER_SOURCE: &str = r#"
 #version 330 core
 in vec4 v_color;
 in vec2 v_uv;
+in float v_mode;
 uniform sampler2D u_texture;
 out vec4 frag_color;
+
+float sdRect(vec2 p, vec2 b) {
+    vec2 d = abs(p) - b;
+    return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0);
+}
+
 void main() {
-    float alpha = texture(u_texture, v_uv).r;
-    frag_color = vec4(v_color.rgb, v_color.a * alpha);
+    if (v_mode < 0.5) { // Mode 0: Textured (Text)
+        float alpha = texture(u_texture, v_uv).r;
+        frag_color = vec4(v_color.rgb, v_color.a * alpha);
+    } else if (v_mode < 1.5) { // Mode 1: Solid / Gradient
+        frag_color = v_color;
+    } else if (v_mode < 2.5) { // Mode 2: Shadow
+        // v_uv is in [min, max] range relative to the rect [0, 1]
+        vec2 p = v_uv - 0.5;
+        float d = sdRect(p, vec2(0.5));
+        // Soft edge for shadow
+        float alpha = smoothstep(0.1, -0.1, d);
+        frag_color = vec4(v_color.rgb, v_color.a * alpha);
+    } else {
+        frag_color = v_color;
+    }
 }
 "#;
 
@@ -80,13 +103,15 @@ impl Renderer {
             gl.bind_vertex_array(Some(vao));
 
             gl.bind_buffer(glow::ARRAY_BUFFER, Some(vbo));
-            let stride = std::mem::size_of::<ColoredVertex>() as i32;
+            let stride = std::mem::size_of::<crate::batch::ColoredVertex>() as i32;
             gl.enable_vertex_attrib_array(0);
             gl.vertex_attrib_pointer_f32(0, 2, glow::FLOAT, false, stride, 0);
             gl.enable_vertex_attrib_array(1);
             gl.vertex_attrib_pointer_f32(1, 4, glow::FLOAT, false, stride, 8);
             gl.enable_vertex_attrib_array(2);
             gl.vertex_attrib_pointer_f32(2, 2, glow::FLOAT, false, stride, 24);
+            gl.enable_vertex_attrib_array(3);
+            gl.vertex_attrib_pointer_f32(3, 1, glow::FLOAT, false, stride, 32);
 
             gl.bind_buffer(glow::ELEMENT_ARRAY_BUFFER, Some(ibo));
 
@@ -148,15 +173,38 @@ impl Renderer {
 
         for command in draw_list.commands() {
             match command {
-                DrawCommand::ColoredRect { rect, color, .. } => {
-                    self.batch.push_rect(*rect, *color);
-                }
                 DrawCommand::RoundedRect {
                     rect,
                     color,
                     radius,
+                    shadow,
                 } => {
+                    if let Some(shadow) = shadow {
+                        self.batch.push_shadow(
+                            lever_core::types::Rect {
+                                x: rect.x + shadow.offset.x,
+                                y: rect.y + shadow.offset.y,
+                                width: rect.width,
+                                height: rect.height,
+                            },
+                            *radius,
+                            shadow.color,
+                            shadow.blur,
+                        );
+                    }
                     self.batch.push_rounded_rect(*rect, *radius, *color);
+                }
+                DrawCommand::GradientRect {
+                    rect,
+                    gradient,
+                    radius,
+                } => {
+                    if *radius > 0.0 {
+                        self.batch.push_rounded_rect(*rect, *radius, gradient.start);
+                    } else {
+                        self.batch
+                            .push_gradient_rect(*rect, gradient.start, gradient.end);
+                    }
                 }
                 DrawCommand::Text { pos, glyphs } => {
                     for glyph in glyphs {

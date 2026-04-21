@@ -44,6 +44,7 @@ impl Tessellator {
                 position: [vertex.position().x, vertex.position().y],
                 color: c,
                 uv: [uv, uv],
+                mode: 1.0,
             });
 
         let _ =

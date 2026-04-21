@@ -7,6 +7,7 @@ pub struct ColoredVertex {
     pub position: [f32; 2],
     pub color: [f32; 4],
     pub uv: [f32; 2],
+    pub mode: f32,
 }
 
 pub struct RectBatch {
@@ -25,8 +26,52 @@ impl RectBatch {
     }
 
     pub fn push_rect(&mut self, rect: Rect, color: Color) {
-        let uv = 0.5 / 1024.0;
-        self.push_textured_rect(rect, color, [uv, uv, 0.0, 0.0]);
+        self.push_gradient_rect(rect, color, color);
+    }
+
+    pub fn push_gradient_rect(&mut self, rect: Rect, start_color: Color, end_color: Color) {
+        let x1 = rect.x;
+        let y1 = rect.y;
+        let x2 = rect.x + rect.width;
+        let y2 = rect.y + rect.height;
+
+        let c1 = start_color.to_array();
+        let c2 = end_color.to_array();
+        let start_index = self.vertices.len() as u32;
+
+        self.vertices.push(ColoredVertex {
+            position: [x1, y1],
+            color: c1,
+            uv: [0.0, 0.0],
+            mode: 1.0,
+        });
+        self.vertices.push(ColoredVertex {
+            position: [x2, y1],
+            color: c1,
+            uv: [1.0, 0.0],
+            mode: 1.0,
+        });
+        self.vertices.push(ColoredVertex {
+            position: [x2, y2],
+            color: c2,
+            uv: [1.0, 1.0],
+            mode: 1.0,
+        });
+        self.vertices.push(ColoredVertex {
+            position: [x1, y2],
+            color: c2,
+            uv: [0.0, 1.0],
+            mode: 1.0,
+        });
+
+        self.indices.extend_from_slice(&[
+            start_index,
+            start_index + 1,
+            start_index + 2,
+            start_index,
+            start_index + 2,
+            start_index + 3,
+        ]);
     }
 
     pub fn push_textured_rect(&mut self, rect: Rect, color: Color, uv_rect: [f32; 4]) {
@@ -47,29 +92,82 @@ impl RectBatch {
             position: [x1, y1],
             color: c,
             uv: [u1, v1],
+            mode: 0.0,
         });
         self.vertices.push(ColoredVertex {
             position: [x2, y1],
             color: c,
             uv: [u2, v1],
+            mode: 0.0,
         });
         self.vertices.push(ColoredVertex {
             position: [x2, y2],
             color: c,
             uv: [u2, v2],
+            mode: 0.0,
         });
         self.vertices.push(ColoredVertex {
             position: [x1, y2],
             color: c,
             uv: [u1, v2],
+            mode: 0.0,
         });
 
-        self.indices.push(start_index);
-        self.indices.push(start_index + 1);
-        self.indices.push(start_index + 2);
-        self.indices.push(start_index);
-        self.indices.push(start_index + 2);
-        self.indices.push(start_index + 3);
+        self.indices.extend_from_slice(&[
+            start_index,
+            start_index + 1,
+            start_index + 2,
+            start_index,
+            start_index + 2,
+            start_index + 3,
+        ]);
+    }
+
+    pub fn push_shadow(&mut self, rect: Rect, _radius: f32, color: Color, blur: f32) {
+        let x1 = rect.x - blur * 2.0;
+        let y1 = rect.y - blur * 2.0;
+        let x2 = rect.x + rect.width + blur * 2.0;
+        let y2 = rect.y + rect.height + blur * 2.0;
+
+        let c = color.to_array();
+        let start_index = self.vertices.len() as u32;
+
+        self.vertices.push(ColoredVertex {
+            position: [x1, y1],
+            color: c,
+            uv: [-blur * 2.0 / rect.width, -blur * 2.0 / rect.height],
+            mode: 2.0,
+        });
+        self.vertices.push(ColoredVertex {
+            position: [x2, y1],
+            color: c,
+            uv: [1.0 + blur * 2.0 / rect.width, -blur * 2.0 / rect.height],
+            mode: 2.0,
+        });
+        self.vertices.push(ColoredVertex {
+            position: [x2, y2],
+            color: c,
+            uv: [
+                1.0 + blur * 2.0 / rect.width,
+                1.0 + blur * 2.0 / rect.height,
+            ],
+            mode: 2.0,
+        });
+        self.vertices.push(ColoredVertex {
+            position: [x1, y2],
+            color: c,
+            uv: [-blur * 2.0 / rect.width, 1.0 + blur * 2.0 / rect.height],
+            mode: 2.0,
+        });
+
+        self.indices.extend_from_slice(&[
+            start_index,
+            start_index + 1,
+            start_index + 2,
+            start_index,
+            start_index + 2,
+            start_index + 3,
+        ]);
     }
 
     pub fn push_rounded_rect(&mut self, rect: Rect, radius: f32, color: Color) {

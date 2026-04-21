@@ -2,14 +2,15 @@ use crate::types::{Color, Rect};
 
 #[derive(Debug, Clone)]
 pub enum DrawCommand {
-    ColoredRect {
-        rect: Rect,
-        color: Color,
-        corner_radius: f32,
-    },
     RoundedRect {
         rect: Rect,
         color: Color,
+        radius: f32,
+        shadow: Option<crate::types::BoxShadow>,
+    },
+    GradientRect {
+        rect: Rect,
+        gradient: crate::types::Gradient,
         radius: f32,
     },
     ClipPush(Rect),
@@ -32,10 +33,11 @@ impl DrawList {
     }
 
     pub fn colored_rect(&mut self, rect: Rect, color: Color, corner_radius: f32) {
-        self.commands.push(DrawCommand::ColoredRect {
+        self.commands.push(DrawCommand::RoundedRect {
             rect,
             color,
-            corner_radius,
+            radius: corner_radius,
+            shadow: None,
         });
     }
 
@@ -43,6 +45,30 @@ impl DrawList {
         self.commands.push(DrawCommand::RoundedRect {
             rect,
             color,
+            radius,
+            shadow: None,
+        });
+    }
+
+    pub fn shadowed_rect(
+        &mut self,
+        rect: Rect,
+        color: Color,
+        radius: f32,
+        shadow: crate::types::BoxShadow,
+    ) {
+        self.commands.push(DrawCommand::RoundedRect {
+            rect,
+            color,
+            radius,
+            shadow: Some(shadow),
+        });
+    }
+
+    pub fn gradient_rect(&mut self, rect: Rect, gradient: crate::types::Gradient, radius: f32) {
+        self.commands.push(DrawCommand::GradientRect {
+            rect,
+            gradient,
             radius,
         });
     }
@@ -61,6 +87,10 @@ impl DrawList {
 
     pub fn commands(&self) -> &[DrawCommand] {
         &self.commands
+    }
+
+    pub fn commands_mut(&mut self) -> &mut Vec<DrawCommand> {
+        &mut self.commands
     }
 
     pub fn clear(&mut self) {

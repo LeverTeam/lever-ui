@@ -1,4 +1,4 @@
-use lever_core::types::{Color, Rect, SideOffsets};
+use lever_core::types::{Color, SideOffsets};
 use lever_core::widgets::{BoxWidget, Button, Flex, Label};
 use lever_windowing::{AppConfig, Application};
 use std::sync::atomic::{AtomicI32, Ordering};

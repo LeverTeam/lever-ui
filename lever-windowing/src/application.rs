@@ -268,7 +268,6 @@ impl ApplicationHandler for AppHandler {
 
                     let root_widget = (self.build_ui)(self.cursor_pos);
 
-                    // Layout pass
                     let constraints = Constraints::tight(viewport.width, viewport.height);
                     let _res =
                         root_widget.layout(constraints, &[], &mut self.text_system, &self.theme);

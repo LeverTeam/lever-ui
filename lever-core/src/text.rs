@@ -15,7 +15,7 @@ impl TextSystem {
     }
 
     pub fn shape(&mut self, text: &str, font_size: f32, color: Color) -> TextLayout {
-        let metrics = Metrics::new(font_size, font_size);
+        let metrics = Metrics::new(font_size, font_size * 1.2);
         let mut buffer = Buffer::new(&mut self.font_system, metrics);
         buffer.set_text(
             &mut self.font_system,
@@ -28,26 +28,25 @@ impl TextSystem {
 
         let mut glyphs = Vec::new();
         let mut width = 0.0f32;
-        let mut height = 0.0f32;
+        let line_height = buffer.metrics().line_height;
 
         for run in buffer.layout_runs() {
             for glyph in run.glyphs.iter() {
                 glyphs.push(GlyphInstance {
                     glyph_id: glyph.glyph_id as u32,
                     x: glyph.x,
-                    y: run.line_y + glyph.y_offset,
+                    y: run.line_y + glyph.y_offset + (font_size * 0.1),
                     color,
                     font_size,
                 });
                 width = width.max(glyph.x + glyph.w);
             }
-            height = height.max(run.line_y + font_size);
         }
 
         TextLayout {
             glyphs,
             width,
-            height,
+            height: line_height,
         }
     }
 }
