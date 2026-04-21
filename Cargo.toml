@@ -1,0 +1,7 @@
+[workspace]
+members = [
+    "lever-core",
+    "lever-renderer",
+    "lever-windowing",
+]
+resolver = "2"

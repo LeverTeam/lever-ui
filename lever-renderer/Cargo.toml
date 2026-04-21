@@ -1,0 +1,9 @@
+[package]
+name = "lever-renderer"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+lever-core = { path = "../lever-core" }
+glow = "0.13"
+thiserror = "1.0"
