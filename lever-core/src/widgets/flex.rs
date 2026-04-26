@@ -7,6 +7,7 @@ pub struct Flex<M> {
     pub direction: FlexDirection,
     pub children: Vec<Box<dyn Widget<M>>>,
     pub gap: f32,
+    pub flex_factor: u32,
 }
 
 impl<M> Flex<M> {
@@ -15,6 +16,7 @@ impl<M> Flex<M> {
             direction: FlexDirection::Row,
             children,
             gap: 0.0,
+            flex_factor: 0,
         }
     }
 
@@ -23,6 +25,7 @@ impl<M> Flex<M> {
             direction: FlexDirection::Column,
             children,
             gap: 0.0,
+            flex_factor: 0,
         }
     }
 
@@ -30,9 +33,18 @@ impl<M> Flex<M> {
         self.gap = gap;
         self
     }
+
+    pub fn with_flex(mut self, flex: u32) -> Self {
+        self.flex_factor = flex;
+        self
+    }
 }
 
 impl<M: 'static> Widget<M> for Flex<M> {
+    fn flex(&self) -> u32 {
+        self.flex_factor
+    }
+
     fn layout(
         &self,
         constraints: Constraints,
@@ -68,7 +80,14 @@ impl<M: 'static> Widget<M> for Flex<M> {
             let mut child_rect = child_rects[i];
             child_rect.x += rect.x;
             child_rect.y += rect.y;
-            child.draw(child_rect, draw_list, text_system, theme, focused_id, pointer_pos);
+            child.draw(
+                child_rect,
+                draw_list,
+                text_system,
+                theme,
+                focused_id,
+                pointer_pos,
+            );
         }
     }
 
@@ -100,7 +119,3 @@ impl<M: 'static> Widget<M> for Flex<M> {
         messages
     }
 }
-
-
-
-

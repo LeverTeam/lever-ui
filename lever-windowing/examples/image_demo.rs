@@ -1,4 +1,4 @@
-use lever_core::app::{App, Context};
+use lever_core::app::{App, Context, UpdateContext};
 use lever_core::types::{Color, Size, TextureId};
 use lever_core::widgets::{BoxWidget, Center, Flex, ImageWidget, Label};
 use lever_windowing::application::Application;
@@ -17,7 +17,7 @@ impl App for ImageDemo {
         self.texture = Some(ctx.load_image(bytes));
     }
 
-    fn update(&mut self, _message: Self::Message) {}
+    fn update(&mut self, _message: Self::Message, _ctx: &mut UpdateContext) {}
 
     fn view(&self) -> Box<dyn lever_core::widget::Widget<Self::Message>> {
         if let Some(tex) = self.texture {
@@ -78,3 +78,5 @@ fn main() {
     let application = Application::new(config, app);
     application.run();
 }
+
+

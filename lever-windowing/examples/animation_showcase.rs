@@ -1,6 +1,6 @@
 use lever_core::animation::{AnimationController, Ease};
-use lever_core::app::{App, Context};
-use lever_core::types::{Color, Point, };
+use lever_core::app::{App, Context, UpdateContext};
+use lever_core::types::{Color, Point};
 use lever_core::widgets::*;
 use lever_windowing::application::Application;
 use lever_windowing::config::AppConfig;
@@ -31,7 +31,7 @@ impl App for AnimationShowcase {
 
     fn init(&mut self, _ctx: &mut Context<Self::Message>) {}
 
-    fn update(&mut self, message: Self::Message) {
+    fn update(&mut self, message: Self::Message, _ctx: &mut UpdateContext) {
         match message {
             Message::ToggleVisibility => {
                 self.is_visible = !self.is_visible;
@@ -99,4 +99,3 @@ fn main() {
     let application = Application::new(config, app);
     application.run();
 }
-

@@ -11,8 +11,10 @@ use winit::window::{Window, WindowAttributes, WindowId};
 
 use crate::config::AppConfig;
 use crate::context::GlContext;
-use lever_core::app::App;
+use lever_core::animation::AnimationController;
+use lever_core::app::{App, UpdateContext};
 use lever_core::draw::DrawList;
+use lever_core::theme::Theme;
 use lever_core::types::{Rect, Size};
 use lever_renderer::Renderer;
 
@@ -51,7 +53,13 @@ struct AppHandler<A: App> {
     draw_list: DrawList,
     cursor_pos: lever_core::types::Point,
     text_system: lever_core::text::TextSystem,
-    theme: lever_core::theme::Theme,
+
+    // Theme system
+    theme: Theme,
+    base_theme: Theme,
+    target_theme: Theme,
+    theme_animation: AnimationController,
+
     focused_id: Option<String>,
     last_frame: std::time::Instant,
     modifiers: lever_core::event::Modifiers,
@@ -60,6 +68,7 @@ struct AppHandler<A: App> {
 
 impl<A: App> AppHandler<A> {
     fn new(config: AppConfig, app: A) -> Self {
+        let dark = Theme::dark();
         Self {
             config,
             app,
@@ -69,7 +78,12 @@ impl<A: App> AppHandler<A> {
             draw_list: DrawList::new(),
             cursor_pos: lever_core::types::Point { x: 0.0, y: 0.0 },
             text_system: lever_core::text::TextSystem::new(),
-            theme: lever_core::theme::Theme::dark(),
+
+            theme: dark.clone(),
+            base_theme: dark.clone(),
+            target_theme: dark.clone(),
+            theme_animation: AnimationController::new(1.0),
+
             focused_id: None,
             last_frame: std::time::Instant::now(),
             modifiers: lever_core::event::Modifiers::default(),
@@ -96,8 +110,17 @@ impl<A: App> AppHandler<A> {
                 &mut self.focused_id,
             );
 
+            let mut update_ctx = UpdateContext::new();
             for message in messages {
-                self.app.update(message);
+                self.app.update(message, &mut update_ctx);
+            }
+
+            if let Some(mode) = update_ctx.theme_mode {
+                let target = Theme::for_mode(mode);
+                self.base_theme = self.theme.clone();
+                self.target_theme = target;
+                self.theme_animation.reset(0.0);
+                self.theme_animation.set_target(1.0);
             }
         }
     }
@@ -287,16 +310,8 @@ impl<A: App> ApplicationHandler for AppHandler<A> {
                         });
                     }
 
-                    // Key-based logic (e.g. Backspace, Escape, or Theme toggle)
-                    if let winit::keyboard::PhysicalKey::Code(winit::keyboard::KeyCode::KeyT) =
-                        event.physical_key
-                    {
-                        if self.theme.background.r > 0.5 {
-                            self.theme = lever_core::theme::Theme::dark();
-                        } else {
-                            self.theme = lever_core::theme::Theme::light();
-                        }
-                    }
+                    // Key-based logic (e.g. Backspace, Escape)
+                    // Theme toggle is now handled via UpdateContext in dispatch_event or widget messages
 
                     // Map key for FrameworkEvent::KeyDown
                     use winit::keyboard::{KeyCode, PhysicalKey};
@@ -398,6 +413,16 @@ impl<A: App> ApplicationHandler for AppHandler<A> {
 
         self.app.tick(dt);
         lever_core::state::tick_animations(dt);
+
+        // Theme transition animation
+        if !self.theme_animation.is_finished() {
+            self.theme_animation.update(dt, 0.3); // 300ms transition
+            self.theme = Theme::lerp(
+                &self.base_theme,
+                &self.target_theme,
+                self.theme_animation.value(),
+            );
+        }
 
         if let Some(window) = &self.window {
             window.request_redraw();

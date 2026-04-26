@@ -1,8 +1,9 @@
-use lever_core::app::App;
+use lever_core::app::{App, UpdateContext};
+use lever_core::theme::ThemeMode;
 use lever_core::types::{Color, SideOffsets};
 use lever_core::widgets::{
     BoxWidget, Button, Center, Checkbox, Flex, Label, ScrollWidget, Slider, Spacer, TextInput,
-    Toggle,
+    ThemeToggle, Toggle,
 };
 use lever_windowing::application::Application;
 use lever_windowing::config::AppConfig;
@@ -14,6 +15,7 @@ pub enum Message {
     ToggleChanged(bool),
     SliderChanged(f32),
     CheckboxChanged(bool),
+    ThemeModeChanged(ThemeMode),
 }
 
 struct GalleryApp {
@@ -22,12 +24,13 @@ struct GalleryApp {
     toggle_on: bool,
     slider_value: f32,
     checkbox_checked: bool,
+    theme_mode: ThemeMode,
 }
 
 impl App for GalleryApp {
     type Message = Message;
 
-    fn update(&mut self, message: Self::Message) {
+    fn update(&mut self, message: Self::Message, ctx: &mut UpdateContext) {
         match message {
             Message::TextChanged(new_text, new_cursor) => {
                 self.input_text = new_text;
@@ -45,26 +48,47 @@ impl App for GalleryApp {
             Message::CheckboxChanged(val) => {
                 self.checkbox_checked = val;
             }
+            Message::ThemeModeChanged(mode) => {
+                self.theme_mode = mode;
+                ctx.set_theme(mode);
+            }
         }
     }
 
     fn view(&self) -> Box<dyn lever_core::widget::Widget<Self::Message>> {
         Box::new(Center::new(Box::new(
-            BoxWidget::new(Color::rgb(0.1, 0.1, 0.1))
+            BoxWidget::new(lever_core::theme::Theme::for_mode(self.theme_mode).background)
                 .with_padding(SideOffsets::all(40.0))
                 .with_child(Box::new(
                     Flex::column(vec![
-                        Box::new(Label::new(
-                            "Lever UI Gallery",
-                            32.0,
-                            Color::rgb(1.0, 1.0, 1.0),
-                        )),
-                        Box::new(Label::new(
-                            "A showcase of core widgets and interaction features.",
-                            16.0,
-                            Color::rgba(1.0, 1.0, 1.0, 0.5),
-                        )),
-                        Box::new(Spacer::new().with_size(10.0, 10.0)),
+                        // Header row with title and theme toggle
+                        Box::new(
+                            Flex::row(vec![
+                                Box::new(
+                                    Flex::column(vec![
+                                        Box::new(Label::new(
+                                            "Lever UI Gallery",
+                                            32.0,
+                                            lever_core::theme::Theme::for_mode(self.theme_mode)
+                                                .text,
+                                        )),
+                                        Box::new(Label::new(
+                                            "A showcase of core widgets and interaction features.",
+                                            16.0,
+                                            lever_core::theme::Theme::for_mode(self.theme_mode)
+                                                .text_muted,
+                                        )),
+                                    ])
+                                    .with_flex(1),
+                                ),
+                                Box::new(
+                                    ThemeToggle::new("theme-toggle", self.theme_mode)
+                                        .on_changed(|mode| Message::ThemeModeChanged(mode)),
+                                ),
+                            ])
+                            .with_gap(20.0),
+                        ),
+                        Box::new(Spacer::new().with_size(10.0, 20.0)),
                         Box::new(
                             ScrollWidget::new(Box::new(
                                 Flex::column(vec![
@@ -72,7 +96,7 @@ impl App for GalleryApp {
                                     Box::new(Label::new(
                                         "Text Input",
                                         20.0,
-                                        Color::rgb(1.0, 1.0, 1.0),
+                                        lever_core::theme::Theme::for_mode(self.theme_mode).text,
                                     )),
                                     Box::new(
                                         TextInput::new("gallery-input")
@@ -88,27 +112,42 @@ impl App for GalleryApp {
                                     Box::new(Label::new(
                                         "Buttons (Hover me!)",
                                         20.0,
-                                        Color::rgb(1.0, 1.0, 1.0),
+                                        lever_core::theme::Theme::for_mode(self.theme_mode).text,
                                     )),
                                     Box::new(
                                         Flex::row(vec![
                                             Box::new(
                                                 Button::new("Primary")
-                                                    .with_color(Color::rgb(0.2, 0.4, 0.8))
+                                                    .with_color(
+                                                        lever_core::theme::Theme::for_mode(
+                                                            self.theme_mode,
+                                                        )
+                                                        .primary,
+                                                    )
                                                     .on_click(|| {
                                                         Message::ButtonClicked("Primary".into())
                                                     }),
                                             ),
                                             Box::new(
                                                 Button::new("Success")
-                                                    .with_color(Color::rgb(0.2, 0.6, 0.3))
+                                                    .with_color(
+                                                        lever_core::theme::Theme::for_mode(
+                                                            self.theme_mode,
+                                                        )
+                                                        .success,
+                                                    )
                                                     .on_click(|| {
                                                         Message::ButtonClicked("Success".into())
                                                     }),
                                             ),
                                             Box::new(
                                                 Button::new("Danger")
-                                                    .with_color(Color::rgb(0.8, 0.2, 0.2))
+                                                    .with_color(
+                                                        lever_core::theme::Theme::for_mode(
+                                                            self.theme_mode,
+                                                        )
+                                                        .danger,
+                                                    )
                                                     .on_click(|| {
                                                         Message::ButtonClicked("Danger".into())
                                                     }),
@@ -121,14 +160,15 @@ impl App for GalleryApp {
                                     Box::new(Label::new(
                                         "Interactive Widgets",
                                         20.0,
-                                        Color::rgb(1.0, 1.0, 1.0),
+                                        lever_core::theme::Theme::for_mode(self.theme_mode).text,
                                     )),
                                     Box::new(
                                         Flex::row(vec![
                                             Box::new(Label::new(
                                                 "Toggle:",
                                                 16.0,
-                                                Color::rgb(1.0, 1.0, 1.0),
+                                                lever_core::theme::Theme::for_mode(self.theme_mode)
+                                                    .text,
                                             )),
                                             Box::new(
                                                 Toggle::new("gallery-toggle", self.toggle_on)
@@ -152,7 +192,8 @@ impl App for GalleryApp {
                                             Box::new(Label::new(
                                                 format!("Slider Value: {:.2}", self.slider_value),
                                                 16.0,
-                                                Color::rgb(1.0, 1.0, 1.0),
+                                                lever_core::theme::Theme::for_mode(self.theme_mode)
+                                                    .text,
                                             )),
                                             Box::new(
                                                 Slider::new("gallery-slider", self.slider_value)
@@ -187,8 +228,10 @@ fn main() {
         toggle_on: true,
         slider_value: 0.5,
         checkbox_checked: false,
+        theme_mode: ThemeMode::Dark,
     };
 
     let application = Application::new(config, app);
     application.run();
 }
+

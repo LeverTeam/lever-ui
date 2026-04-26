@@ -1,4 +1,4 @@
-use lever_core::app::App;
+use lever_core::app::{App, UpdateContext};
 use lever_core::types::Color;
 use lever_core::widgets::{BoxWidget, Center, Label};
 use lever_windowing::application::Application;
@@ -12,7 +12,7 @@ enum Message {}
 impl App for HelloApp {
     type Message = Message;
 
-    fn update(&mut self, _message: Self::Message) {}
+    fn update(&mut self, _message: Self::Message, _ctx: &mut UpdateContext) {}
 
     fn view(&self) -> Box<dyn lever_core::widget::Widget<Self::Message>> {
         Box::new(Center::new(Box::new(
@@ -38,3 +38,4 @@ fn main() {
     let application = Application::new(config, app);
     application.run();
 }
+

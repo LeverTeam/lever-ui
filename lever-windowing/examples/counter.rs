@@ -1,4 +1,4 @@
-use lever_core::app::App;
+use lever_core::app::{App, UpdateContext};
 use lever_core::types::{Color, SideOffsets};
 use lever_core::widgets::{BoxWidget, Button, Center, Flex, Label, Spacer};
 use lever_windowing::application::Application;
@@ -17,7 +17,7 @@ enum Message {
 impl App for CounterApp {
     type Message = Message;
 
-    fn update(&mut self, message: Self::Message) {
+    fn update(&mut self, message: Self::Message, _ctx: &mut UpdateContext) {
         match message {
             Message::Increment => self.count += 1,
             Message::Decrement => self.count -= 1,
@@ -65,3 +65,4 @@ fn main() {
     let application = Application::new(config, app);
     application.run();
 }
+

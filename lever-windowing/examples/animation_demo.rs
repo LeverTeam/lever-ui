@@ -1,5 +1,5 @@
 use lever_core::animation::{Animation, Ease};
-use lever_core::app::App;
+use lever_core::app::{App, UpdateContext};
 use lever_core::types::Color;
 use lever_core::widgets::{Button, Center, Flex, Label, Spacer};
 use lever_windowing::application::Application;
@@ -17,7 +17,7 @@ enum Message {
 impl App for AnimationDemo {
     type Message = Message;
 
-    fn update(&mut self, message: Self::Message) {
+    fn update(&mut self, message: Self::Message, _ctx: &mut UpdateContext) {
         match message {
             Message::Click => {
                 println!("Button clicked!");
@@ -73,3 +73,4 @@ fn main() {
     let application = Application::new(config, app);
     application.run();
 }
+

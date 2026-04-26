@@ -1,3 +1,4 @@
+use crate::theme::ThemeMode;
 use crate::types::TextureId;
 use crate::widget::Widget;
 
@@ -23,6 +24,20 @@ impl<'a, M> Context<'a, M> {
     }
 }
 
+pub struct UpdateContext {
+    pub theme_mode: Option<ThemeMode>,
+}
+
+impl UpdateContext {
+    pub fn new() -> Self {
+        Self { theme_mode: None }
+    }
+
+    pub fn set_theme(&mut self, mode: ThemeMode) {
+        self.theme_mode = Some(mode);
+    }
+}
+
 pub trait TextureLoader {
     fn load_texture(&mut self, bytes: &[u8]) -> TextureId;
 }
@@ -31,7 +46,7 @@ pub trait App: Sized + 'static {
     type Message: Send + 'static;
 
     fn init(&mut self, _ctx: &mut Context<Self::Message>) {}
-    fn update(&mut self, message: Self::Message);
+    fn update(&mut self, message: Self::Message, _ctx: &mut UpdateContext);
     fn tick(&mut self, _dt: f32) {}
     fn view(&self) -> Box<dyn Widget<Self::Message>>;
 }

@@ -1,4 +1,4 @@
-use lever_core::app::App;
+use lever_core::app::{App, UpdateContext};
 use lever_core::types::{Color, Point, SideOffsets};
 use lever_core::widgets::{BoxWidget, Center, Flex, Label, ScrollWidget, Spacer};
 use lever_windowing::application::Application;
@@ -17,7 +17,7 @@ enum Message {
 impl App for ScrollDemo {
     type Message = Message;
 
-    fn update(&mut self, message: Self::Message) {
+    fn update(&mut self, message: Self::Message, _ctx: &mut UpdateContext) {
         match message {
             Message::ScrollTo(offset) => {
                 self.target_offset = offset;
@@ -81,3 +81,4 @@ fn main() {
     let application = Application::new(config, app);
     application.run();
 }
+

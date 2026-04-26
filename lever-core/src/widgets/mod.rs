@@ -12,6 +12,7 @@ mod slider;
 mod spacer;
 mod stack;
 mod text_input;
+mod theme_toggle;
 mod toggle;
 
 pub use animated::*;
@@ -28,4 +29,5 @@ pub use slider::*;
 pub use spacer::*;
 pub use stack::*;
 pub use text_input::*;
+pub use theme_toggle::*;
 pub use toggle::*;

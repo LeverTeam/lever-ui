@@ -186,4 +186,16 @@ impl AnimationController {
         }
         self.tick(dt);
     }
+
+    pub fn reset(&mut self, value: f32) {
+        self.value = value;
+        self.start_value = value;
+        self.target = value;
+        self.elapsed = 0.0;
+        self.is_animating = false;
+    }
+
+    pub fn is_finished(&self) -> bool {
+        !self.is_animating
+    }
 }
