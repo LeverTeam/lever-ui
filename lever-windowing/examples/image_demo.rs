@@ -78,5 +78,3 @@ fn main() {
     let application = Application::new(config, app);
     application.run();
 }
-
-
