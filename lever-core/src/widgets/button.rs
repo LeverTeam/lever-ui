@@ -1,11 +1,11 @@
 use crate::draw::DrawList;
 use crate::layout::{Constraints, LayoutNode, LayoutResult};
-use crate::types::{Color, Rect, Size};
+use crate::types::{BoxShadow, Color, Point, Rect, Size};
 use crate::widget::Widget;
 
 pub struct Button<M> {
     pub label: String,
-    pub color: Color,
+    pub color: Option<Color>,
     pub on_click: Option<Box<dyn Fn() -> M>>,
 }
 
@@ -13,13 +13,13 @@ impl<M> Button<M> {
     pub fn new(label: impl Into<String>) -> Self {
         Self {
             label: label.into(),
-            color: Color::rgb(0.2, 0.4, 0.8),
+            color: None,
             on_click: None,
         }
     }
 
     pub fn with_color(mut self, color: Color) -> Self {
-        self.color = color;
+        self.color = Some(color);
         self
     }
 
@@ -41,8 +41,8 @@ impl<M: 'static> Widget<M> for Button<M> {
         _theme: &crate::theme::Theme,
     ) -> LayoutResult {
         let size = constraints.clamp_size(Size {
-            width: 100.0,
-            height: 36.0,
+            width: 120.0,
+            height: 40.0,
         });
         LayoutResult { size }
     }
@@ -54,15 +54,41 @@ impl<M: 'static> Widget<M> for Button<M> {
         text_system: &mut crate::text::TextSystem,
         theme: &crate::theme::Theme,
         _focused_id: Option<&str>,
+        pointer_pos: Option<crate::types::Point>,
     ) {
-        draw_list.rounded_rect(rect, self.color, theme.radius_sm);
+        let is_hovered = pointer_pos.map_or(false, |pos| rect.contains(pos));
+        let base_color = self.color.unwrap_or(theme.primary);
 
-        let layout = text_system.shape(&self.label, 14.0, Color::rgb(1.0, 1.0, 1.0));
+        let button_color = if is_hovered {
+            Color {
+                r: (base_color.r * 1.1).min(1.0),
+                g: (base_color.g * 1.1).min(1.0),
+                b: (base_color.b * 1.1).min(1.0),
+                a: base_color.a,
+            }
+        } else {
+            base_color
+        };
+
+        // Subtle shadow
+        draw_list.shadowed_rect(
+            rect,
+            button_color,
+            theme.radius_md,
+            BoxShadow {
+                offset: Point { x: 0.0, y: 2.0 },
+                blur: 6.0,
+                color: theme.shadow_color,
+            },
+        );
+
+        // Label
+        let layout = text_system.shape(&self.label, 14.0, theme.on_primary);
         let x_offset = (rect.width - layout.width) / 2.0;
         let y_offset = (rect.height - layout.height) / 2.0;
 
         draw_list.text(
-            crate::types::Point {
+            Point {
                 x: rect.x + x_offset,
                 y: rect.y + y_offset,
             },

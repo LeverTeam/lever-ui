@@ -378,6 +378,7 @@ impl<A: App> ApplicationHandler for AppHandler<A> {
                         &mut self.text_system,
                         &self.theme,
                         self.focused_id.as_deref(),
+                        Some(self.cursor_pos),
                     );
 
                     renderer.render(&self.draw_list);
@@ -396,6 +397,7 @@ impl<A: App> ApplicationHandler for AppHandler<A> {
         self.last_frame = now;
 
         self.app.tick(dt);
+        lever_core::state::tick_animations(dt);
 
         if let Some(window) = &self.window {
             window.request_redraw();

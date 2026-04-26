@@ -8,6 +8,7 @@ pub struct ScrollWidget<M> {
     pub child: Box<dyn Widget<M>>,
     pub scroll_offset: Point,
     pub on_scroll: Option<Box<dyn Fn(Point) -> M>>,
+    pub flex: u32,
 }
 
 impl<M> ScrollWidget<M> {
@@ -16,6 +17,7 @@ impl<M> ScrollWidget<M> {
             child,
             scroll_offset: Point { x: 0.0, y: 0.0 },
             on_scroll: None,
+            flex: 0,
         }
     }
 
@@ -29,6 +31,11 @@ impl<M> ScrollWidget<M> {
         F: Fn(Point) -> M + 'static,
     {
         self.on_scroll = Some(Box::new(callback));
+        self
+    }
+
+    pub fn with_flex(mut self, flex: u32) -> Self {
+        self.flex = flex;
         self
     }
 }
@@ -61,6 +68,7 @@ impl<M: 'static> Widget<M> for ScrollWidget<M> {
         text_system: &mut crate::text::TextSystem,
         theme: &crate::theme::Theme,
         focused_id: Option<&str>,
+        pointer_pos: Option<crate::types::Point>,
     ) {
         draw_list.clip_push(rect);
 
@@ -71,8 +79,14 @@ impl<M: 'static> Widget<M> for ScrollWidget<M> {
             height: f32::INFINITY,
         };
 
-        self.child
-            .draw(child_rect, draw_list, text_system, theme, focused_id);
+        self.child.draw(
+            child_rect,
+            draw_list,
+            text_system,
+            theme,
+            focused_id,
+            pointer_pos,
+        );
 
         draw_list.clip_pop();
     }
@@ -117,5 +131,9 @@ impl<M: 'static> Widget<M> for ScrollWidget<M> {
         );
 
         messages
+    }
+
+    fn flex(&self) -> u32 {
+        self.flex
     }
 }

@@ -46,7 +46,13 @@ impl<M: 'static> Widget<M> for ImageWidget<M> {
         _text_system: &mut crate::text::TextSystem,
         _theme: &crate::theme::Theme,
         _focused_id: Option<&str>,
+        _pointer_pos: Option<crate::types::Point>,
     ) {
         draw_list.textured_rect(rect, self.texture, self.tint, [0.0, 0.0, 1.0, 1.0]);
     }
 }
+
+
+
+
+

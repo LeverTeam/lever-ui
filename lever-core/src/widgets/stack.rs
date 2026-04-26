@@ -60,9 +60,10 @@ impl<M: 'static> Widget<M> for Stack<M> {
         text_system: &mut crate::text::TextSystem,
         theme: &crate::theme::Theme,
         focused_id: Option<&str>,
+        pointer_pos: Option<crate::types::Point>,
     ) {
         for child in &self.children {
-            child.draw(rect, draw_list, text_system, theme, focused_id);
+            child.draw(rect, draw_list, text_system, theme, focused_id, pointer_pos);
         }
     }
 
@@ -75,14 +76,15 @@ impl<M: 'static> Widget<M> for Stack<M> {
         focused_id: &mut Option<String>,
     ) -> Vec<M> {
         let mut messages = Vec::new();
-        // In a stack, events go from top to bottom (reverse order)
         for child in self.children.iter_mut().rev() {
             let res = child.on_event(event, rect, text_system, theme, focused_id);
             if !res.is_empty() {
                 messages.extend(res);
-                return messages; // Top child handled it
+                return messages;
             }
         }
         messages
     }
 }
+
+

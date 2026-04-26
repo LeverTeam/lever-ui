@@ -12,6 +12,7 @@ pub struct BoxWidget<M> {
     pub width: Option<f32>,
     pub height: Option<f32>,
     pub child: Option<Box<dyn Widget<M>>>,
+    pub flex: u32,
 }
 
 impl<M> BoxWidget<M> {
@@ -25,6 +26,7 @@ impl<M> BoxWidget<M> {
             width: None,
             height: None,
             child: None,
+            flex: 0,
         }
     }
 
@@ -56,6 +58,11 @@ impl<M> BoxWidget<M> {
 
     pub fn with_child(mut self, child: Box<dyn Widget<M>>) -> Self {
         self.child = Some(child);
+        self
+    }
+
+    pub fn with_flex(mut self, flex: u32) -> Self {
+        self.flex = flex;
         self
     }
 }
@@ -99,6 +106,7 @@ impl<M: 'static> Widget<M> for BoxWidget<M> {
         text_system: &mut crate::text::TextSystem,
         theme: &crate::theme::Theme,
         focused_id: Option<&str>,
+        pointer_pos: Option<crate::types::Point>,
     ) {
         if let Some(gradient) = self.gradient {
             if let Some(shadow) = self.shadow {
@@ -120,7 +128,14 @@ impl<M: 'static> Widget<M> for BoxWidget<M> {
                 width: rect.width - self.padding.left - self.padding.right,
                 height: rect.height - self.padding.top - self.padding.bottom,
             };
-            child.draw(child_rect, draw_list, text_system, theme, focused_id);
+            child.draw(
+                child_rect,
+                draw_list,
+                text_system,
+                theme,
+                focused_id,
+                pointer_pos,
+            );
         }
     }
 
@@ -143,5 +158,9 @@ impl<M: 'static> Widget<M> for BoxWidget<M> {
         } else {
             Vec::new()
         }
+    }
+
+    fn flex(&self) -> u32 {
+        self.flex
     }
 }

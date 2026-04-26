@@ -1,4 +1,4 @@
-use crate::batch::{ColoredVertex, RectBatch};
+use crate::batch::RectBatch;
 use crate::error::RendererError;
 use crate::shader::{compile_shader, link_program};
 use glow::{Context, HasContext};
@@ -62,24 +62,34 @@ void main() {
         float alpha = texture(u_texture, v_uv).r;
         frag_color = vec4(v_color.rgb, v_color.a * alpha);
     } else if (v_mode < 1.5) { // Mode 1: Rounded Rect
-        vec2 p = v_uv * v_size - v_size * 0.5;
+        vec2 p = v_uv;
         float d = sdRoundedRect(p, v_size * 0.5, v_extra.x);
-        float alpha = 1.0 - smoothstep(0.0, 1.0, d);
+        float fw = max(fwidth(d), 0.0001);
+        float alpha = 1.0 - smoothstep(-fw, fw, d);
         frag_color = vec4(v_color.rgb, v_color.a * alpha);
     } else if (v_mode < 2.5) { // Mode 2: Shadow
-        vec2 p = v_uv * v_size - v_size * 0.5;
+        vec2 p = v_uv;
         float d = sdRoundedRect(p, v_size * 0.5, v_extra.x);
         float alpha = 1.0 - smoothstep(-v_extra.y, v_extra.y, d);
         frag_color = vec4(v_color.rgb, v_color.a * alpha);
     } else if (v_mode < 3.5) { // Mode 3: Gradient Rounded Rect
-        vec2 p = v_uv * v_size - v_size * 0.5;
+        vec2 p = v_uv;
         float d = sdRoundedRect(p, v_size * 0.5, v_extra.x);
-        float alpha = 1.0 - smoothstep(0.0, 1.0, d);
-        vec4 color = mix(v_color, v_color2, v_uv.y);
+        float fw = max(fwidth(d), 0.0001);
+        float alpha = 1.0 - smoothstep(-fw, fw, d);
+        vec2 normalized_uv = p / v_size + 0.5;
+        vec4 color = mix(v_color, v_color2, normalized_uv.y);
         frag_color = vec4(color.rgb, color.a * alpha);
     } else if (v_mode < 4.5) { // Mode 4: Raw Image
         vec4 tex_color = texture(u_texture, v_uv);
         frag_color = tex_color * v_color;
+    } else if (v_mode < 6.5) { // Mode 6: Stroke
+        vec2 p = v_uv;
+        float d = sdRoundedRect(p, v_size * 0.5, v_extra.x);
+        float ring_d = abs(d + v_extra.y * 0.5) - v_extra.y * 0.5;
+        float fw = max(fwidth(ring_d), 0.0001);
+        float alpha = 1.0 - smoothstep(-fw, fw, ring_d);
+        frag_color = vec4(v_color.rgb, v_color.a * alpha);
     } else {
         frag_color = v_color;
     }

@@ -53,6 +53,7 @@ impl<M: 'static> Widget<M> for Flex<M> {
         text_system: &mut crate::text::TextSystem,
         theme: &crate::theme::Theme,
         focused_id: Option<&str>,
+        pointer_pos: Option<crate::types::Point>,
     ) {
         let mut solver = FlexLayout::new(self.direction);
         solver.gap = self.gap;
@@ -67,7 +68,7 @@ impl<M: 'static> Widget<M> for Flex<M> {
             let mut child_rect = child_rects[i];
             child_rect.x += rect.x;
             child_rect.y += rect.y;
-            child.draw(child_rect, draw_list, text_system, theme, focused_id);
+            child.draw(child_rect, draw_list, text_system, theme, focused_id, pointer_pos);
         }
     }
 
@@ -99,3 +100,7 @@ impl<M: 'static> Widget<M> for Flex<M> {
         messages
     }
 }
+
+
+
+

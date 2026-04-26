@@ -175,4 +175,15 @@ impl AnimationController {
     pub fn is_animating(&self) -> bool {
         self.is_animating
     }
+
+    pub fn set_target(&mut self, target: f32) {
+        self.animate_to(target, 0.2, Ease::QuadInOut);
+    }
+
+    pub fn update(&mut self, dt: f32, duration: f32) {
+        if (self.target - self.value).abs() > 0.001 {
+            self.animate_to(self.target, duration, Ease::QuadInOut);
+        }
+        self.tick(dt);
+    }
 }

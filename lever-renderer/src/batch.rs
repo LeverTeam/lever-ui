@@ -1,4 +1,3 @@
-use crate::tessellation::Tessellator;
 use lever_core::types::{Color, Rect};
 
 #[repr(C)]
@@ -16,7 +15,6 @@ pub struct ColoredVertex {
 pub struct RectBatch {
     vertices: Vec<ColoredVertex>,
     indices: Vec<u32>,
-    tess: Tessellator,
 }
 
 impl RectBatch {
@@ -24,59 +22,81 @@ impl RectBatch {
         Self {
             vertices: Vec::new(),
             indices: Vec::new(),
-            tess: Tessellator::new(),
         }
     }
 
     pub fn push_rect(&mut self, rect: Rect, color: Color) {
-        self.push_gradient_rect(rect, color, color);
+        self.push_rounded_rect(rect, 0.0, color);
     }
 
     pub fn push_gradient_rect(&mut self, rect: Rect, start_color: Color, end_color: Color) {
-        let x1 = rect.x;
-        let y1 = rect.y;
-        let x2 = rect.x + rect.width;
-        let y2 = rect.y + rect.height;
+        self.push_rounded_gradient_rect(rect, 0.0, start_color, end_color);
+    }
 
-        let c1 = start_color.to_array();
-        let c2 = end_color.to_array();
+    fn snap_rect(rect: Rect, margin: f32) -> (f32, f32, f32, f32, f32, f32) {
+        let cx = (rect.x + rect.width / 2.0).round();
+        let cy = (rect.y + rect.height / 2.0).round();
+        let half_w = (rect.width / 2.0).round();
+        let half_h = (rect.height / 2.0).round();
+
+        let x1 = cx - half_w - margin;
+        let y1 = cy - half_h - margin;
+        let x2 = cx + half_w + margin;
+        let y2 = cy + half_h + margin;
+
+        (x1, y1, x2, y2, half_w * 2.0, half_h * 2.0)
+    }
+
+    pub fn push_rounded_rect(&mut self, rect: Rect, radius: f32, color: Color) {
+        let margin = 2.0;
+        let (x1, y1, x2, y2, w, h) = Self::snap_rect(rect, margin);
+
+        let hw = w / 2.0;
+        let hh = h / 2.0;
+
+        let c = color.to_array();
         let start_index = self.vertices.len() as u32;
+
+        let u_min = -hw - margin;
+        let v_min = -hh - margin;
+        let u_max = hw + margin;
+        let v_max = hh + margin;
 
         self.vertices.push(ColoredVertex {
             position: [x1, y1],
-            color: c1,
-            color2: c2,
-            uv: [0.0, 0.0],
+            color: c,
+            color2: c,
+            uv: [u_min, v_min],
             mode: 1.0,
-            size: [0.0, 0.0],
-            extra: [0.0, 0.0, 0.0, 0.0],
+            size: [w, h],
+            extra: [radius, 0.0, 0.0, 0.0],
         });
         self.vertices.push(ColoredVertex {
             position: [x2, y1],
-            color: c1,
-            color2: c2,
-            uv: [1.0, 0.0],
+            color: c,
+            color2: c,
+            uv: [u_max, v_min],
             mode: 1.0,
-            size: [0.0, 0.0],
-            extra: [0.0, 0.0, 0.0, 0.0],
+            size: [w, h],
+            extra: [radius, 0.0, 0.0, 0.0],
         });
         self.vertices.push(ColoredVertex {
             position: [x2, y2],
-            color: c1,
-            color2: c2,
-            uv: [1.0, 1.0],
+            color: c,
+            color2: c,
+            uv: [u_max, v_max],
             mode: 1.0,
-            size: [0.0, 0.0],
-            extra: [0.0, 0.0, 0.0, 0.0],
+            size: [w, h],
+            extra: [radius, 0.0, 0.0, 0.0],
         });
         self.vertices.push(ColoredVertex {
             position: [x1, y2],
-            color: c1,
-            color2: c2,
-            uv: [0.0, 1.0],
+            color: c,
+            color2: c,
+            uv: [u_min, v_max],
             mode: 1.0,
-            size: [0.0, 0.0],
-            extra: [0.0, 0.0, 0.0, 0.0],
+            size: [w, h],
+            extra: [radius, 0.0, 0.0, 0.0],
         });
 
         self.indices.extend_from_slice(&[
@@ -96,52 +116,55 @@ impl RectBatch {
         start_color: Color,
         end_color: Color,
     ) {
-        let x1 = rect.x;
-        let y1 = rect.y;
-        let x2 = rect.x + rect.width;
-        let y2 = rect.y + rect.height;
+        let margin = 2.0;
+        let (x1, y1, x2, y2, w, h) = Self::snap_rect(rect, margin);
+
+        let hw = w / 2.0;
+        let hh = h / 2.0;
 
         let c1 = start_color.to_array();
         let c2 = end_color.to_array();
         let start_index = self.vertices.len() as u32;
 
-        let half_w = rect.width / 2.0;
-        let half_h = rect.height / 2.0;
+        let u_min = -hw - margin;
+        let v_min = -hh - margin;
+        let u_max = hw + margin;
+        let v_max = hh + margin;
 
         self.vertices.push(ColoredVertex {
             position: [x1, y1],
             color: c1,
             color2: c2,
-            uv: [-half_w, -half_h],
+            uv: [u_min, v_min],
             mode: 3.0,
-            size: [rect.width, rect.height],
+            size: [w, h],
             extra: [radius, 0.0, 0.0, 0.0],
         });
         self.vertices.push(ColoredVertex {
             position: [x2, y1],
             color: c1,
             color2: c2,
-            uv: [half_w, -half_h],
+            uv: [u_max, v_min],
             mode: 3.0,
-            size: [rect.width, rect.height],
+            size: [w, h],
             extra: [radius, 0.0, 0.0, 0.0],
         });
         self.vertices.push(ColoredVertex {
             position: [x2, y2],
             color: c1,
             color2: c2,
-            uv: [half_w, half_h],
+            uv: [u_max, v_max],
             mode: 3.0,
-            size: [rect.width, rect.height],
+            size: [w, h],
             extra: [radius, 0.0, 0.0, 0.0],
         });
         self.vertices.push(ColoredVertex {
             position: [x1, y2],
             color: c1,
             color2: c2,
-            uv: [-half_w, half_h],
+            uv: [u_min, v_max],
             mode: 3.0,
-            size: [rect.width, rect.height],
+            size: [w, h],
             extra: [radius, 0.0, 0.0, 0.0],
         });
 
@@ -156,10 +179,12 @@ impl RectBatch {
     }
 
     pub fn push_textured_rect(&mut self, rect: Rect, color: Color, uv_rect: [f32; 4], mode: f32) {
-        let x1 = rect.x;
-        let y1 = rect.y;
-        let x2 = rect.x + rect.width;
-        let y2 = rect.y + rect.height;
+        let x1 = rect.x.round();
+        let y1 = rect.y.round();
+        let x2 = (rect.x + rect.width).round();
+        let y2 = (rect.y + rect.height).round();
+        let w = x2 - x1;
+        let h = y2 - y1;
 
         let u1 = uv_rect[0];
         let v1 = uv_rect[1];
@@ -175,7 +200,7 @@ impl RectBatch {
             color2: c,
             uv: [u1, v1],
             mode,
-            size: [0.0, 0.0],
+            size: [w, h],
             extra: [0.0, 0.0, 0.0, 0.0],
         });
         self.vertices.push(ColoredVertex {
@@ -184,7 +209,7 @@ impl RectBatch {
             color2: c,
             uv: [u2, v1],
             mode,
-            size: [0.0, 0.0],
+            size: [w, h],
             extra: [0.0, 0.0, 0.0, 0.0],
         });
         self.vertices.push(ColoredVertex {
@@ -193,7 +218,7 @@ impl RectBatch {
             color2: c,
             uv: [u2, v2],
             mode,
-            size: [0.0, 0.0],
+            size: [w, h],
             extra: [0.0, 0.0, 0.0, 0.0],
         });
         self.vertices.push(ColoredVertex {
@@ -202,7 +227,7 @@ impl RectBatch {
             color2: c,
             uv: [u1, v2],
             mode,
-            size: [0.0, 0.0],
+            size: [w, h],
             extra: [0.0, 0.0, 0.0, 0.0],
         });
 
@@ -224,54 +249,56 @@ impl RectBatch {
         self.push_textured_rect(rect, color, uv_rect, 4.0);
     }
 
-    pub fn push_shadow(&mut self, rect: Rect, _radius: f32, color: Color, blur: f32) {
+    pub fn push_shadow(&mut self, rect: Rect, radius: f32, color: Color, blur: f32) {
         let expansion = blur * 3.0;
-        let x1 = rect.x - expansion;
-        let y1 = rect.y - expansion;
-        let x2 = rect.x + rect.width + expansion;
-        let y2 = rect.y + rect.height + expansion;
+        let (x1, y1, x2, y2, w, h) = Self::snap_rect(rect, expansion);
 
-        let half_w = rect.width / 2.0;
-        let half_h = rect.height / 2.0;
+        let hw = w / 2.0;
+        let hh = h / 2.0;
 
         let c = color.to_array();
         let start_index = self.vertices.len() as u32;
+
+        let u_min = -hw - expansion;
+        let v_min = -hh - expansion;
+        let u_max = hw + expansion;
+        let v_max = hh + expansion;
 
         self.vertices.push(ColoredVertex {
             position: [x1, y1],
             color: c,
             color2: c,
-            uv: [-half_w - expansion, -half_h - expansion],
+            uv: [u_min, v_min],
             mode: 2.0,
-            size: [rect.width, rect.height],
-            extra: [0.0, 0.0, blur, 0.0],
+            size: [w, h],
+            extra: [radius, blur, 0.0, 0.0],
         });
         self.vertices.push(ColoredVertex {
             position: [x2, y1],
             color: c,
             color2: c,
-            uv: [half_w + expansion, -half_h - expansion],
+            uv: [u_max, v_min],
             mode: 2.0,
-            size: [rect.width, rect.height],
-            extra: [0.0, 0.0, blur, 0.0],
+            size: [w, h],
+            extra: [radius, blur, 0.0, 0.0],
         });
         self.vertices.push(ColoredVertex {
             position: [x2, y2],
             color: c,
             color2: c,
-            uv: [half_w + expansion, half_h + expansion],
+            uv: [u_max, v_max],
             mode: 2.0,
-            size: [rect.width, rect.height],
-            extra: [0.0, 0.0, blur, 0.0],
+            size: [w, h],
+            extra: [radius, blur, 0.0, 0.0],
         });
         self.vertices.push(ColoredVertex {
             position: [x1, y2],
             color: c,
             color2: c,
-            uv: [-half_w - expansion, half_h + expansion],
+            uv: [u_min, v_max],
             mode: 2.0,
-            size: [rect.width, rect.height],
-            extra: [0.0, 0.0, blur, 0.0],
+            size: [w, h],
+            extra: [radius, blur, 0.0, 0.0],
         });
 
         self.indices.extend_from_slice(&[
@@ -284,29 +311,66 @@ impl RectBatch {
         ]);
     }
 
-    pub fn push_rounded_rect(&mut self, rect: Rect, radius: f32, color: Color) {
-        if radius <= 0.0 {
-            self.push_rect(rect, color);
-        } else {
-            self.tess.tessellate_rounded_rect(
-                rect,
-                radius,
-                color,
-                &mut self.vertices,
-                &mut self.indices,
-            );
-        }
-    }
-
     pub fn push_stroke(&mut self, rect: Rect, radius: f32, thickness: f32, color: Color) {
-        self.tess.tessellate_stroke_rect(
-            rect,
-            radius,
-            thickness,
-            color,
-            &mut self.vertices,
-            &mut self.indices,
-        );
+        let margin = 2.0 + thickness;
+        let (x1, y1, x2, y2, w, h) = Self::snap_rect(rect, margin);
+
+        let hw = w / 2.0;
+        let hh = h / 2.0;
+
+        let c = color.to_array();
+        let start_index = self.vertices.len() as u32;
+
+        let u_min = -hw - margin;
+        let v_min = -hh - margin;
+        let u_max = hw + margin;
+        let v_max = hh + margin;
+
+        self.vertices.push(ColoredVertex {
+            position: [x1, y1],
+            color: c,
+            color2: c,
+            uv: [u_min, v_min],
+            mode: 6.0,
+            size: [w, h],
+            extra: [radius, thickness, 0.0, 0.0],
+        });
+        self.vertices.push(ColoredVertex {
+            position: [x2, y1],
+            color: c,
+            color2: c,
+            uv: [u_max, v_min],
+            mode: 6.0,
+            size: [w, h],
+            extra: [radius, thickness, 0.0, 0.0],
+        });
+        self.vertices.push(ColoredVertex {
+            position: [x2, y2],
+            color: c,
+            color2: c,
+            uv: [u_max, v_max],
+            mode: 6.0,
+            size: [w, h],
+            extra: [radius, thickness, 0.0, 0.0],
+        });
+        self.vertices.push(ColoredVertex {
+            position: [x1, y2],
+            color: c,
+            color2: c,
+            uv: [u_min, v_max],
+            mode: 6.0,
+            size: [w, h],
+            extra: [radius, thickness, 0.0, 0.0],
+        });
+
+        self.indices.extend_from_slice(&[
+            start_index,
+            start_index + 1,
+            start_index + 2,
+            start_index,
+            start_index + 2,
+            start_index + 3,
+        ]);
     }
 
     pub fn vertices(&self) -> &[ColoredVertex] {

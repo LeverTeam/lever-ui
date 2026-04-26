@@ -1,6 +1,6 @@
 use lever_core::animation::{AnimationController, Ease};
 use lever_core::app::{App, Context};
-use lever_core::types::{Color, Point, Rect, Size};
+use lever_core::types::{Color, Point, };
 use lever_core::widgets::*;
 use lever_windowing::application::Application;
 use lever_windowing::config::AppConfig;
@@ -99,3 +99,4 @@ fn main() {
     let application = Application::new(config, app);
     application.run();
 }
+

@@ -43,6 +43,7 @@ impl<M: 'static> Widget<M> for Center<M> {
         text_system: &mut crate::text::TextSystem,
         theme: &crate::theme::Theme,
         focused_id: Option<&str>,
+        pointer_pos: Option<crate::types::Point>,
     ) {
         let child_res = self.child.layout(
             Constraints::loose(rect.width, rect.height),
@@ -58,8 +59,14 @@ impl<M: 'static> Widget<M> for Center<M> {
             height: child_res.size.height,
         };
 
-        self.child
-            .draw(child_rect, draw_list, text_system, theme, focused_id);
+        self.child.draw(
+            child_rect,
+            draw_list,
+            text_system,
+            theme,
+            focused_id,
+            pointer_pos,
+        );
     }
 
     fn on_event(

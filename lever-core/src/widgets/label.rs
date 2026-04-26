@@ -46,6 +46,7 @@ impl<M: 'static> Widget<M> for Label<M> {
         text_system: &mut crate::text::TextSystem,
         _theme: &crate::theme::Theme,
         _focused_id: Option<&str>,
+        _pointer_pos: Option<crate::types::Point>,
     ) {
         let layout = text_system.shape(&self.text, self.font_size, self.color);
         draw_list.text(
@@ -68,3 +69,9 @@ impl<M: 'static> Widget<M> for Label<M> {
         Vec::new()
     }
 }
+
+
+
+
+
+

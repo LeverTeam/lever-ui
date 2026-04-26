@@ -39,6 +39,12 @@ impl<M> Spacer<M> {
         }
     }
 
+    pub fn with_size(mut self, width: f32, height: f32) -> Self {
+        self.width = width;
+        self.height = height;
+        self
+    }
+
     pub fn with_flex(mut self, flex: u32) -> Self {
         self.flex = flex;
         self
@@ -68,6 +74,7 @@ impl<M: 'static> Widget<M> for Spacer<M> {
         _text_system: &mut crate::text::TextSystem,
         _theme: &crate::theme::Theme,
         _focused_id: Option<&str>,
+        _pointer_pos: Option<crate::types::Point>,
     ) {
     }
 
@@ -86,3 +93,5 @@ impl<M: 'static> Widget<M> for Spacer<M> {
         self.flex
     }
 }
+
+

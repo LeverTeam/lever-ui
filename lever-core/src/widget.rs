@@ -22,6 +22,7 @@ pub trait Widget<M> {
         text_system: &mut crate::text::TextSystem,
         theme: &crate::theme::Theme,
         focused_id: Option<&str>,
+        pointer_pos: Option<crate::types::Point>,
     );
 
     fn on_event(
@@ -42,4 +43,6 @@ pub trait Widget<M> {
     fn id(&self) -> Option<&str> {
         None
     }
+
+    fn tick(&mut self, _dt: f32) {}
 }

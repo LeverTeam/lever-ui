@@ -37,9 +37,10 @@ impl<M: 'static> Widget<M> for Expanded<M> {
         text_system: &mut crate::text::TextSystem,
         theme: &crate::theme::Theme,
         focused_id: Option<&str>,
+        pointer_pos: Option<crate::types::Point>,
     ) {
         self.child
-            .draw(rect, draw_list, text_system, theme, focused_id);
+            .draw(rect, draw_list, text_system, theme, focused_id, pointer_pos);
     }
 
     fn on_event(
@@ -58,3 +59,7 @@ impl<M: 'static> Widget<M> for Expanded<M> {
         self.flex
     }
 }
+
+
+
+

@@ -89,6 +89,15 @@ impl Color {
     pub fn to_array(self) -> [f32; 4] {
         [self.r, self.g, self.b, self.a]
     }
+
+    pub fn lerp(a: Self, b: Self, t: f32) -> Self {
+        Self {
+            r: a.r + (b.r - a.r) * t,
+            g: a.g + (b.g - a.g) * t,
+            b: a.b + (b.b - a.b) * t,
+            a: a.a + (b.a - a.a) * t,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Default)]

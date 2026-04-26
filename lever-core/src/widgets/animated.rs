@@ -37,6 +37,7 @@ impl<M: 'static> Widget<M> for AnimatedOpacity<M> {
         text_system: &mut crate::text::TextSystem,
         theme: &crate::theme::Theme,
         focused_id: Option<&str>,
+        pointer_pos: Option<crate::types::Point>,
     ) {
         if self.opacity <= 0.0 {
             return;
@@ -47,7 +48,7 @@ impl<M: 'static> Widget<M> for AnimatedOpacity<M> {
         }
 
         self.child
-            .draw(rect, draw_list, text_system, theme, focused_id);
+            .draw(rect, draw_list, text_system, theme, focused_id, pointer_pos);
 
         if self.opacity < 1.0 {
             draw_list.pop_opacity();
@@ -100,10 +101,11 @@ impl<M: 'static> Widget<M> for AnimatedTranslation<M> {
         text_system: &mut crate::text::TextSystem,
         theme: &crate::theme::Theme,
         focused_id: Option<&str>,
+        pointer_pos: Option<crate::types::Point>,
     ) {
         draw_list.push_translation(self.offset);
         self.child
-            .draw(rect, draw_list, text_system, theme, focused_id);
+            .draw(rect, draw_list, text_system, theme, focused_id, pointer_pos);
         draw_list.pop_translation();
     }
 

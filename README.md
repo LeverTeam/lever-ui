@@ -1,49 +1,59 @@
-Lever UI
+# Lever UI
 
-A cross-platform UI framework for Rust with GPU-accelerated rendering and a stateful, message-driven architecture. It uses Signed Distance Fields (SDF) for high-quality rounded shapes, gradients, and shadows.
+![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)
 
-## Installation
+A cross-platform GPU-accelerated UI framework for Rust with a message-driven architecture. Lever uses Signed Distance Fields (SDF) for high-performance rendering of pixel-perfect rounded shapes, dynamic gradients, and drop shadows.
+
+## Stack
+
+![Rust](https://img.shields.io/badge/Rust-000000?style=flat-square&logo=rust&logoColor=white)
+![OpenGL](https://img.shields.io/badge/OpenGL-5586A4?style=flat-square&logo=opengl&logoColor=white)
+
+## Installation ![Platform](https://img.shields.io/badge/platform-windows%20%7C%20macos%20%7C%20linux-lightgrey?style=flat-square)
 
 ```powershell
-# Build the project
 cargo build
-
-# Run examples
-cargo run --example hello
-cargo run --example animation_demo
 ```
 
 ## Usage / Examples
 
-### hello.rs
+### gallery.rs
 
-Basic application setup with a single centered label.
+A showcase of core widgets including Flex layouts, TextInput, Buttons, Toggles, and Sliders.
 
 ```rust
-impl App for HelloApp {
+impl App for GalleryApp {
     type Message = Message;
-    fn update(&mut self, _message: Self::Message) {}
+
+    fn update(&mut self, message: Self::Message) {
+        match message {
+            Message::TextChanged(new_text, new_cursor) => {
+                self.input_text = new_text;
+                self.cursor_index = new_cursor;
+            }
+            Message::ButtonClicked(name) => println!("Clicked: {}", name),
+            // ...
+        }
+    }
+
     fn view(&self) -> Box<dyn Widget<Self::Message>> {
         Box::new(Center::new(Box::new(
-            BoxWidget::new(Color::rgb(0.2, 0.4, 0.2))
-                .with_child(Box::new(Label::new("Hello Lever!", 32.0, Color::rgb(1.0, 1.0, 1.0)))),
+            BoxWidget::new(Color::rgb(0.1, 0.1, 0.1))
+                .with_padding(SideOffsets::all(40.0))
+                .with_child(Box::new(
+                    Flex::column(vec![
+                        Box::new(Label::new("Lever UI Gallery", 32.0, Color::rgb(1.0, 1.0, 1.0))),
+                        Box::new(TextInput::new("input")
+                            .with_text(&self.input_text)
+                            .on_input(|t, c| Message::TextChanged(t, c))),
+                        Box::new(Flex::row(vec![
+                            Box::new(Button::new("Primary").with_color(Color::rgb(0.2, 0.4, 0.8))),
+                            Box::new(Toggle::new("toggle", true)),
+                        ])),
+                        Box::new(Slider::new("slider", 0.5)),
+                    ])
+                ))
         )))
-    }
-}
-```
-
-### animation_demo.rs
-
-Smooth color transitions using the built-in animation system and easing functions.
-
-```rust
-impl App for AnimationDemo {
-    fn tick(&mut self, dt: f32) {
-        self.hover_anim.update(dt);
-    }
-    fn view(&self) -> Box<dyn Widget<Self::Message>> {
-        let button_color = self.hover_anim.color(start_color, end_color);
-        Box::new(Button::new("Animated Button").with_color(button_color))
     }
 }
 ```
