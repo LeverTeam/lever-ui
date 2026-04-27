@@ -6,20 +6,20 @@ use crate::layout::{Constraints, LayoutNode, LayoutResult};
 use crate::types::{Color, Point, Rect, Size};
 use crate::widget::Widget;
 
-pub struct Checkbox<M> {
+pub struct RadioButton<M> {
     pub id: String,
-    pub is_checked: bool,
+    pub is_selected: bool,
     pub label: Option<String>,
-    pub on_changed: Option<Box<dyn Fn(bool) -> M>>,
+    pub on_selected: Option<Box<dyn Fn() -> M>>,
 }
 
-impl<M> Checkbox<M> {
-    pub fn new(id: impl Into<String>, is_checked: bool) -> Self {
+impl<M> RadioButton<M> {
+    pub fn new(id: impl Into<String>, is_selected: bool) -> Self {
         Self {
             id: id.into(),
-            is_checked,
+            is_selected,
             label: None,
-            on_changed: None,
+            on_selected: None,
         }
     }
 
@@ -28,16 +28,16 @@ impl<M> Checkbox<M> {
         self
     }
 
-    pub fn on_changed<F>(mut self, f: F) -> Self
+    pub fn on_selected<F>(mut self, f: F) -> Self
     where
-        F: Fn(bool) -> M + 'static,
+        F: Fn() -> M + 'static,
     {
-        self.on_changed = Some(Box::new(f));
+        self.on_selected = Some(Box::new(f));
         self
     }
 }
 
-impl<M: 'static> Widget<M> for Checkbox<M> {
+impl<M: 'static> Widget<M> for RadioButton<M> {
     fn id(&self) -> Option<&str> {
         Some(&self.id)
     }
@@ -73,25 +73,20 @@ impl<M: 'static> Widget<M> for Checkbox<M> {
     ) {
         let is_hovered = pointer_pos.map_or(false, |pos| rect.contains(pos));
 
-        let box_rect = Rect {
+        let circle_radius = 12.0;
+        let circle_center = Point {
+            x: rect.x + circle_radius,
+            y: rect.y + circle_radius,
+        };
+        let circle_rect = Rect {
             x: rect.x,
             y: rect.y,
             width: 24.0,
             height: 24.0,
         };
 
-        // Animate background color
-        let target_bg = if self.is_checked {
-            theme.primary
-        } else if is_hovered {
-            theme.surface_variant
-        } else {
-            Color::rgba(0.0, 0.0, 0.0, 0.0)
-        };
-        let bg_color = animated_color(&format!("{}_bg", self.id), target_bg, 0.15);
-
         // Animate border color
-        let target_border = if self.is_checked {
+        let target_border = if self.is_selected {
             theme.primary
         } else if is_hovered {
             theme.text_muted
@@ -100,27 +95,26 @@ impl<M: 'static> Widget<M> for Checkbox<M> {
         };
         let border_color = animated_color(&format!("{}_border", self.id), target_border, 0.15);
 
-        // Draw box
-        draw_list.rounded_rect(box_rect, bg_color, theme.radius_sm);
-        draw_list.stroke_rect(box_rect, border_color, theme.radius_sm, 2.0);
+        // Draw outer circle
+        draw_list.stroke_rect(circle_rect, border_color, circle_radius, 2.0);
 
-        // Draw checkmark with spring animation
-        let check_scale = animated_spring(
-            &format!("{}_check_scale", self.id),
-            if self.is_checked { 1.0 } else { 0.0 },
+        // Draw inner dot with spring animation
+        let dot_scale = animated_spring(
+            &format!("{}_dot_scale", self.id),
+            if self.is_selected { 1.0 } else { 0.0 },
             Spring::SNAPPY,
         );
 
-        if check_scale > 0.01 {
-            let check_size = 12.0 * check_scale;
-            let check_rect = Rect {
-                x: box_rect.x + (box_rect.width - check_size) / 2.0,
-                y: box_rect.y + (box_rect.height - check_size) / 2.0,
-                width: check_size,
-                height: check_size,
+        if dot_scale > 0.01 {
+            let dot_radius = 6.0 * dot_scale;
+            let dot_rect = Rect {
+                x: circle_center.x - dot_radius,
+                y: circle_center.y - dot_radius,
+                width: dot_radius * 2.0,
+                height: dot_radius * 2.0,
             };
 
-            draw_list.rounded_rect(check_rect, theme.on_primary, 2.0);
+            draw_list.rounded_rect(dot_rect, theme.primary, dot_radius);
         }
 
         if let Some(label) = &self.label {
@@ -147,9 +141,10 @@ impl<M: 'static> Widget<M> for Checkbox<M> {
         match event {
             FrameworkEvent::PointerDown { position, button } => {
                 if *button == PointerButton::Primary && rect.contains(*position) {
-                    self.is_checked = !self.is_checked;
-                    if let Some(on_changed) = &self.on_changed {
-                        messages.push(on_changed(self.is_checked));
+                    if !self.is_selected {
+                        if let Some(on_selected) = &self.on_selected {
+                            messages.push(on_selected());
+                        }
                     }
                 }
             }

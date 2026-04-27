@@ -1,8 +1,10 @@
+use crate::animated::{animated_color, animated_spring};
+use crate::animation::Spring;
 use crate::draw::DrawList;
 use crate::event::{FrameworkEvent, PointerButton};
 use crate::layout::{Constraints, LayoutNode, LayoutResult};
 use crate::state::{get_or_set_state, update_state};
-use crate::types::{Color, Rect, Size};
+use crate::types::{Color, Point, Rect, Size};
 use crate::widget::Widget;
 
 #[derive(Debug, Clone, Default)]
@@ -60,21 +62,27 @@ impl<M: 'static> Widget<M> for Slider<M> {
         _text_system: &mut crate::text::TextSystem,
         theme: &crate::theme::Theme,
         _focused_id: Option<&str>,
-        _pointer_pos: Option<crate::types::Point>,
+        pointer_pos: Option<crate::types::Point>,
     ) {
+        let state = get_or_set_state::<SliderState, _>(&self.id, || SliderState::default());
+        let is_hovered = pointer_pos.map_or(false, |pos| rect.contains(pos));
+
         let track_height = 6.0;
         let track_rect = Rect {
-            x: rect.x + 8.0,
+            x: rect.x + 12.0,
             y: rect.y + (rect.height - track_height) / 2.0,
-            width: rect.width - 16.0,
+            width: rect.width - 24.0,
             height: track_height,
         };
+
+        // Animate the value to make it feel smooth when clicking
+        let animated_val = animated_spring(&format!("{}_val", self.id), self.value, Spring::SNAPPY);
 
         // Track background
         draw_list.rounded_rect(track_rect, theme.surface_variant, track_height / 2.0);
 
         // Active track
-        let active_width = track_rect.width * self.value;
+        let active_width = track_rect.width * animated_val;
         draw_list.rounded_rect(
             Rect {
                 x: track_rect.x,
@@ -87,7 +95,21 @@ impl<M: 'static> Widget<M> for Slider<M> {
         );
 
         // Thumb
-        let thumb_radius = 8.0;
+        let thumb_base_radius = 8.0;
+        // Animate thumb size on hover/drag
+        let thumb_scale = animated_spring(
+            &format!("{}_thumb_scale", self.id),
+            if state.is_dragging {
+                1.3
+            } else if is_hovered {
+                1.15
+            } else {
+                1.0
+            },
+            Spring::SNAPPY,
+        );
+
+        let thumb_radius = thumb_base_radius * thumb_scale;
         let thumb_x = track_rect.x + active_width;
         let thumb_y = rect.y + rect.height / 2.0;
 
@@ -98,10 +120,33 @@ impl<M: 'static> Widget<M> for Slider<M> {
             height: thumb_radius * 2.0,
         };
 
-        draw_list.rounded_rect(thumb_rect, Color::rgb(1.0, 1.0, 1.0), thumb_radius);
+        // Animate thumb color
+        let target_thumb_color = if state.is_dragging {
+            theme.primary
+        } else {
+            Color::WHITE
+        };
+        let thumb_color =
+            animated_color(&format!("{}_thumb_color", self.id), target_thumb_color, 0.1);
+
+        draw_list.shadowed_rect(
+            thumb_rect,
+            thumb_color,
+            thumb_radius,
+            crate::types::BoxShadow {
+                offset: Point { x: 0.0, y: 2.0 },
+                blur: 6.0,
+                color: theme.shadow_color,
+            },
+        );
 
         // Thumb border
-        draw_list.stroke_rect(thumb_rect, theme.primary, thumb_radius, 2.0);
+        let border_color = if state.is_dragging {
+            theme.primary
+        } else {
+            theme.border
+        };
+        draw_list.stroke_rect(thumb_rect, border_color, thumb_radius, 2.0);
     }
 
     fn on_event(
@@ -142,7 +187,9 @@ impl<M: 'static> Widget<M> for Slider<M> {
                 }
             }
             FrameworkEvent::PointerUp { .. } => {
-                update_state::<SliderState, _>(&self.id, |s| s.is_dragging = false);
+                if state.is_dragging {
+                    update_state::<SliderState, _>(&self.id, |s| s.is_dragging = false);
+                }
             }
             _ => {}
         }
@@ -152,8 +199,8 @@ impl<M: 'static> Widget<M> for Slider<M> {
 
 impl<M> Slider<M> {
     fn calculate_value(&self, mouse_x: f32, rect: Rect) -> f32 {
-        let track_x = rect.x + 8.0;
-        let track_width = rect.width - 16.0;
+        let track_x = rect.x + 12.0;
+        let track_width = rect.width - 24.0;
         let local_x = (mouse_x - track_x).clamp(0.0, track_width);
         local_x / track_width
     }

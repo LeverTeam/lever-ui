@@ -48,6 +48,9 @@ pub fn tick_animations(dt: f32) {
             if let Some(anim) = val.downcast_mut::<crate::animation::AnimationController>() {
                 anim.tick(dt);
             }
+            if let Some(anim) = val.downcast_mut::<crate::animation::SpringController>() {
+                anim.tick(dt);
+            }
         }
     });
 }

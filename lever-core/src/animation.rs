@@ -41,6 +41,105 @@ impl Ease {
     }
 }
 
+/// Parameters for a spring animation.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Spring {
+    pub stiffness: f32,
+    pub damping: f32,
+    pub mass: f32,
+}
+
+impl Spring {
+    /// A snappy, highly responsive spring with minimal overshoot.
+    pub const SNAPPY: Self = Self {
+        stiffness: 230.0,
+        damping: 22.0,
+        mass: 1.0,
+    };
+
+    /// A smooth, gentle spring with no overshoot (critically damped).
+    pub const SMOOTH: Self = Self {
+        stiffness: 120.0,
+        damping: 22.0,
+        mass: 1.0,
+    };
+
+    /// A bouncy, playful spring with noticeable oscillation.
+    pub const BOUNCY: Self = Self {
+        stiffness: 180.0,
+        damping: 12.0,
+        mass: 1.0,
+    };
+
+    /// An over-damped, slow spring.
+    pub const GENTLE: Self = Self {
+        stiffness: 50.0,
+        damping: 10.0,
+        mass: 1.0,
+    };
+}
+
+impl Default for Spring {
+    fn default() -> Self {
+        Self::SNAPPY
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct SpringController {
+    pub value: f32,
+    pub velocity: f32,
+    pub target: f32,
+    pub spring: Spring,
+    pub precision: f32,
+}
+
+impl SpringController {
+    pub fn new(initial: f32, spring: Spring) -> Self {
+        Self {
+            value: initial,
+            velocity: 0.0,
+            target: initial,
+            spring,
+            precision: 0.001,
+        }
+    }
+
+    pub fn set_target(&mut self, target: f32) {
+        self.target = target;
+    }
+
+    pub fn tick(&mut self, dt: f32) {
+        // Use a fixed time step internally for stability (120Hz)
+        let sub_step = 1.0 / 120.0;
+        let mut remaining_dt = dt.min(0.1); // Cap dt to avoid explosion
+
+        while remaining_dt > 0.0 {
+            let step = remaining_dt.min(sub_step);
+
+            let spring_force = -self.spring.stiffness * (self.value - self.target);
+            let damping_force = -self.spring.damping * self.velocity;
+            let acceleration = (spring_force + damping_force) / self.spring.mass;
+
+            self.velocity += acceleration * step;
+            self.value += self.velocity * step;
+
+            remaining_dt -= step;
+        }
+
+        // Snap to target if very close and slow
+        if (self.value - self.target).abs() < self.precision && self.velocity.abs() < self.precision
+        {
+            self.value = self.target;
+            self.velocity = 0.0;
+        }
+    }
+
+    pub fn is_finished(&self) -> bool {
+        (self.value - self.target).abs() < self.precision && self.velocity.abs() < self.precision
+    }
+}
+
 pub struct Animation {
     duration: f32,
     elapsed: f32,

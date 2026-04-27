@@ -1,9 +1,12 @@
+use crate::animated::{animated_color, animated_spring};
+use crate::animation::Spring;
 use crate::draw::DrawList;
 use crate::layout::{Constraints, LayoutNode, LayoutResult};
 use crate::types::{BoxShadow, Color, Point, Rect, Size};
 use crate::widget::Widget;
 
 pub struct Button<M> {
+    pub id: Option<String>,
     pub label: String,
     pub color: Option<Color>,
     pub flex: u32,
@@ -13,11 +16,17 @@ pub struct Button<M> {
 impl<M> Button<M> {
     pub fn new(label: impl Into<String>) -> Self {
         Self {
+            id: None,
             label: label.into(),
             color: None,
             flex: 0,
             on_click: None,
         }
+    }
+
+    pub fn with_id(mut self, id: impl Into<String>) -> Self {
+        self.id = Some(id.into());
+        self
     }
 
     pub fn with_color(mut self, color: Color) -> Self {
@@ -66,20 +75,56 @@ impl<M: 'static> Widget<M> for Button<M> {
         let is_hovered = pointer_pos.map_or(false, |pos| rect.contains(pos));
         let base_color = self.color.unwrap_or(theme.primary);
 
-        let button_color = if is_hovered {
-            Color {
-                r: (base_color.r * 1.1).min(1.0),
-                g: (base_color.g * 1.1).min(1.0),
-                b: (base_color.b * 1.1).min(1.0),
-                a: base_color.a,
+        // Animate color and scale if ID is provided
+        let (button_color, scale) = if let Some(id) = &self.id {
+            let target_color = if is_hovered {
+                Color {
+                    r: (base_color.r * 1.1).min(1.0),
+                    g: (base_color.g * 1.1).min(1.0),
+                    b: (base_color.b * 1.1).min(1.0),
+                    a: base_color.a,
+                }
+            } else {
+                base_color
+            };
+
+            let animated_c = animated_color(&format!("{}_color", id), target_color, 0.15);
+            let target_scale = if is_hovered { 1.05 } else { 1.0 };
+            let animated_s =
+                animated_spring(&format!("{}_scale", id), target_scale, Spring::SNAPPY);
+
+            (animated_c, animated_s)
+        } else {
+            let c = if is_hovered {
+                Color {
+                    r: (base_color.r * 1.1).min(1.0),
+                    g: (base_color.g * 1.1).min(1.0),
+                    b: (base_color.b * 1.1).min(1.0),
+                    a: base_color.a,
+                }
+            } else {
+                base_color
+            };
+            (c, 1.0)
+        };
+
+        // Apply scale to the rect
+        let scaled_rect = if scale != 1.0 {
+            let new_w = rect.width * scale;
+            let new_h = rect.height * scale;
+            Rect {
+                x: rect.x - (new_w - rect.width) / 2.0,
+                y: rect.y - (new_h - rect.height) / 2.0,
+                width: new_w,
+                height: new_h,
             }
         } else {
-            base_color
+            rect
         };
 
         // Subtle shadow
         draw_list.shadowed_rect(
-            rect,
+            scaled_rect,
             button_color,
             theme.radius_md,
             BoxShadow {
@@ -91,13 +136,13 @@ impl<M: 'static> Widget<M> for Button<M> {
 
         // Label
         let layout = text_system.shape(&self.label, 14.0, theme.on_primary);
-        let x_offset = (rect.width - layout.width) / 2.0;
-        let y_offset = (rect.height - layout.height) / 2.0;
+        let x = rect.x + (rect.width - layout.width) / 2.0;
+        let y = rect.y + (rect.height - layout.height) / 2.0;
 
         draw_list.text(
             Point {
-                x: rect.x + x_offset,
-                y: rect.y + y_offset,
+                x: x.round(),
+                y: y.round(),
             },
             layout.glyphs,
         );

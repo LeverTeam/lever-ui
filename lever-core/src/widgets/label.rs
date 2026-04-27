@@ -58,8 +58,8 @@ impl<M: 'static> Widget<M> for Label<M> {
         let layout = text_system.shape(&self.text, self.font_size, self.color);
         draw_list.text(
             crate::types::Point {
-                x: rect.x,
-                y: rect.y,
+                x: rect.x.round(),
+                y: rect.y.round(),
             },
             layout.glyphs,
         );
