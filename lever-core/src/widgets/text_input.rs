@@ -98,7 +98,7 @@ impl<M: 'static> Widget<M> for TextInput<M> {
         let inner_rect = rect.inset(12.0, 0.0);
 
         if self.text.is_empty() {
-            let layout = text_system.shape(&self.placeholder, 14.0, theme.text_muted);
+            let layout = text_system.shape(&self.placeholder, 14.0, theme.text_muted, None);
             draw_list.text(
                 Point {
                     x: inner_rect.x,
@@ -107,7 +107,7 @@ impl<M: 'static> Widget<M> for TextInput<M> {
                 layout.glyphs,
             );
         } else {
-            let layout = text_system.shape(&self.text, 14.0, theme.text);
+            let layout = text_system.shape(&self.text, 14.0, theme.text, None);
             draw_list.text(
                 Point {
                     x: inner_rect.x,

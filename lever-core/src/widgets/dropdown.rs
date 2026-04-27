@@ -50,7 +50,7 @@ impl<M: 'static> Widget<M> for Dropdown<M> {
     ) -> LayoutResult {
         let mut max_width: f32 = 120.0;
         for item in &self.items {
-            let layout = text_system.shape(item, 14.0, theme.text);
+            let layout = text_system.shape(item, 14.0, theme.text, None);
             max_width = max_width.max(layout.width + 48.0);
         }
 
@@ -90,7 +90,7 @@ impl<M: 'static> Widget<M> for Dropdown<M> {
             .map(|s| s.as_str())
             .unwrap_or("Select...");
 
-        let layout = text_system.shape(label, 14.0, theme.text);
+        let layout = text_system.shape(label, 14.0, theme.text, None);
         draw_list.text(
             Point {
                 x: (rect.x + 12.0).round(),
@@ -171,7 +171,7 @@ impl<M: 'static> Widget<M> for Dropdown<M> {
                     });
                 }
 
-                let text_layout = text_system.shape(item, 14.0, theme.text);
+                let text_layout = text_system.shape(item, 14.0, theme.text, None);
                 draw_list.push_deferred(DrawCommand::Text {
                     pos: Point {
                         x: (item_rect.x + 8.0).round(),

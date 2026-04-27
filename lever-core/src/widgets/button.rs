@@ -61,11 +61,12 @@ impl<M: 'static> Widget<M> for Button<M> {
         &self,
         constraints: Constraints,
         _children: &[LayoutNode],
-        _text_system: &mut crate::text::TextSystem,
-        _theme: &crate::theme::Theme,
+        text_system: &mut crate::text::TextSystem,
+        theme: &crate::theme::Theme,
     ) -> LayoutResult {
+        let text_layout = text_system.shape(&self.label, 14.0, theme.on_primary, None);
         let size = constraints.clamp_size(Size {
-            width: 120.0,
+            width: text_layout.width + 32.0, // Add padding
             height: 40.0,
         });
         LayoutResult { size }
@@ -143,7 +144,7 @@ impl<M: 'static> Widget<M> for Button<M> {
         );
 
         // Label
-        let layout = text_system.shape(&self.label, 14.0, theme.on_primary);
+        let layout = text_system.shape(&self.label, 14.0, theme.on_primary, None);
         let x = rect.x + (rect.width - layout.width) / 2.0;
         let y = rect.y + (rect.height - layout.height) / 2.0;
 

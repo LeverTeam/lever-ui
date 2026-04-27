@@ -46,6 +46,14 @@ impl Constraints {
             height: size.height.clamp(min_h, max_h),
         }
     }
+
+    pub fn max_width_opt(&self) -> Option<f32> {
+        if self.max_width.is_finite() {
+            Some(self.max_width)
+        } else {
+            None
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy)]

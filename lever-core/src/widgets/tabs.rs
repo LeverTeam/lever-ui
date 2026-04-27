@@ -46,7 +46,7 @@ impl<M: 'static> Widget<M> for Tabs<M> {
     ) -> LayoutResult {
         let mut total_width = 0.0;
         for item in &self.items {
-            let layout = text_system.shape(item, 14.0, theme.text);
+            let layout = text_system.shape(item, 14.0, theme.text, None);
             total_width += layout.width + 32.0; // Padding
         }
 
@@ -71,7 +71,7 @@ impl<M: 'static> Widget<M> for Tabs<M> {
 
         // Draw items and collect their rects for indicator animation
         for (i, item) in self.items.iter().enumerate() {
-            let layout = text_system.shape(item, 14.0, theme.text);
+            let layout = text_system.shape(item, 14.0, theme.text, None);
             let tab_width = layout.width + 32.0;
             let tab_rect = Rect {
                 x: current_x,
@@ -95,7 +95,7 @@ impl<M: 'static> Widget<M> for Tabs<M> {
                     x: (current_x + 16.0).round(),
                     y: (rect.y + (rect.height - layout.height) / 2.0).round(),
                 },
-                text_system.shape(item, 14.0, text_color).glyphs,
+                text_system.shape(item, 14.0, text_color, None).glyphs,
             );
 
             current_x += tab_width;
@@ -139,7 +139,7 @@ impl<M: 'static> Widget<M> for Tabs<M> {
                 if *button == PointerButton::Primary && rect.contains(*position) {
                     let mut current_x = rect.x;
                     for (i, item) in self.items.iter().enumerate() {
-                        let layout = text_system.shape(item, 14.0, theme.text);
+                        let layout = text_system.shape(item, 14.0, theme.text, None);
                         let tab_width = layout.width + 32.0;
                         let tab_rect = Rect {
                             x: current_x,

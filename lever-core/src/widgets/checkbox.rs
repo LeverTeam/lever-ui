@@ -51,7 +51,7 @@ impl<M: 'static> Widget<M> for Checkbox<M> {
     ) -> LayoutResult {
         let mut width = 24.0;
         if let Some(label) = &self.label {
-            let layout = text_system.shape(label, 14.0, Color::WHITE);
+            let layout = text_system.shape(label, 14.0, Color::WHITE, None);
             width += 12.0 + layout.width;
         }
 
@@ -124,7 +124,7 @@ impl<M: 'static> Widget<M> for Checkbox<M> {
         }
 
         if let Some(label) = &self.label {
-            let layout = text_system.shape(label, 14.0, theme.text);
+            let layout = text_system.shape(label, 14.0, theme.text, None);
             draw_list.text(
                 Point {
                     x: (rect.x + 36.0).round(),

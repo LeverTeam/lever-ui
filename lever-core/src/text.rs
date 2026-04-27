@@ -5,7 +5,7 @@ use std::collections::HashMap;
 pub struct TextSystem {
     pub font_system: FontSystem,
     pub swash_cache: SwashCache,
-    cache: HashMap<(String, u32), TextLayout>,
+    cache: HashMap<(String, u32, u32), TextLayout>,
 }
 
 impl TextSystem {
@@ -17,8 +17,18 @@ impl TextSystem {
         }
     }
 
-    pub fn shape(&mut self, text: &str, font_size: f32, color: Color) -> TextLayout {
-        let cache_key = (text.to_string(), (font_size * 100.0) as u32);
+    pub fn shape(
+        &mut self,
+        text: &str,
+        font_size: f32,
+        color: Color,
+        max_width: Option<f32>,
+    ) -> TextLayout {
+        let cache_key = (
+            text.to_string(),
+            (font_size * 100.0) as u32,
+            max_width.map(|w| (w * 10.0) as u32).unwrap_or(0),
+        );
 
         if let Some(layout) = self.cache.get(&cache_key) {
             let mut result = layout.clone();
@@ -37,6 +47,11 @@ impl TextSystem {
             Shaping::Advanced,
             None,
         );
+
+        if let Some(w) = max_width {
+            buffer.set_size(&mut self.font_system, Some(w), None);
+        }
+
         buffer.shape_until_scroll(&mut self.font_system, false);
 
         let mut glyphs = Vec::new();
@@ -68,7 +83,7 @@ impl TextSystem {
         let layout = TextLayout {
             glyphs,
             width,
-            height: line_height,
+            height: buffer.layout_runs().count() as f32 * line_height,
             cursor_positions,
         };
 
