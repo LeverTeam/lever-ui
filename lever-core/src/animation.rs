@@ -110,9 +110,9 @@ impl SpringController {
     }
 
     pub fn tick(&mut self, dt: f32) {
-        // Use a fixed time step internally for stability (120Hz)
-        let sub_step = 1.0 / 120.0;
-        let mut remaining_dt = dt.min(0.1); // Cap dt to avoid explosion
+        // Use a fixed time step internally for stability (240Hz)
+        let sub_step = 1.0 / 240.0;
+        let mut remaining_dt = dt.min(0.05); // Cap dt even tighter to avoid jumps
 
         while remaining_dt > 0.0 {
             let step = remaining_dt.min(sub_step);

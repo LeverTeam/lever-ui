@@ -45,7 +45,7 @@ impl<M: 'static> Widget<M> for Label<M> {
         constraints: Constraints,
         _children: &[LayoutNode],
         text_system: &mut crate::text::TextSystem,
-        theme: &crate::theme::Theme,
+        _theme: &crate::theme::Theme,
     ) -> LayoutResult {
         let layout = text_system.shape(
             &self.text,
@@ -55,8 +55,8 @@ impl<M: 'static> Widget<M> for Label<M> {
         );
         LayoutResult {
             size: constraints.clamp_size(Size {
-                width: layout.width,
-                height: layout.height,
+                width: layout.width.ceil(),
+                height: layout.height.ceil(),
             }),
         }
     }
@@ -70,7 +70,12 @@ impl<M: 'static> Widget<M> for Label<M> {
         _focused_id: Option<&str>,
         _pointer_pos: Option<crate::types::Point>,
     ) {
-        let layout = text_system.shape(&self.text, self.font_size, self.color, Some(rect.width));
+        let layout = text_system.shape(
+            &self.text,
+            self.font_size,
+            self.color,
+            Some(rect.width + 1.0),
+        );
         draw_list.text(
             crate::types::Point {
                 x: rect.x.round(),

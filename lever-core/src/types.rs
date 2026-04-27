@@ -76,6 +76,26 @@ impl Rect {
             height: (self.height - 2.0 * dy).max(0.0),
         }
     }
+
+    pub fn translate(&self, offset: Point) -> Rect {
+        Rect {
+            x: self.x + offset.x,
+            y: self.y + offset.y,
+            width: self.width,
+            height: self.height,
+        }
+    }
+
+    pub fn scale_centered(&self, scale: f32) -> Rect {
+        let new_w = self.width * scale;
+        let new_h = self.height * scale;
+        Rect {
+            x: self.x + (self.width - new_w) / 2.0,
+            y: self.y + (self.height - new_h) / 2.0,
+            width: new_w,
+            height: new_h,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Default)]

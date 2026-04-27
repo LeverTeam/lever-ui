@@ -181,10 +181,10 @@ impl RectBatch {
     pub fn push_textured_rect(&mut self, rect: Rect, color: Color, uv_rect: [f32; 4], mode: f32) {
         let x1 = rect.x.round();
         let y1 = rect.y.round();
-        let x2 = (rect.x + rect.width).round();
-        let y2 = (rect.y + rect.height).round();
-        let w = x2 - x1;
-        let h = y2 - y1;
+        let x2 = x1 + rect.width;
+        let y2 = y1 + rect.height;
+        let w = rect.width;
+        let h = rect.height;
 
         let u1 = uv_rect[0];
         let v1 = uv_rect[1];

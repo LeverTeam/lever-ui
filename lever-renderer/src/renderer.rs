@@ -19,6 +19,8 @@ layout(location = 6) in vec4 a_extra;
 uniform vec2 u_viewport;
 uniform float u_opacity;
 uniform vec2 u_offset;
+uniform float u_scale;
+uniform vec2 u_pivot;
 
 out vec4 v_color;
 out vec4 v_color2;
@@ -36,7 +38,14 @@ void main() {
     v_mode = a_mode;
     v_size = a_size;
     v_extra = a_extra;
-    gl_Position = vec4(((a_position + u_offset) / u_viewport * 2.0 - 1.0) * vec2(1.0, -1.0), 0.0, 1.0);
+
+    vec2 pos = a_position;
+    if (a_mode >= 0.5) {
+        pos = (pos - u_pivot) * u_scale + u_pivot;
+    }
+    pos += u_offset;
+
+    gl_Position = vec4((pos / u_viewport * 2.0 - 1.0) * vec2(1.0, -1.0), 0.0, 1.0);
 }
 "#;
 
@@ -108,19 +117,28 @@ pub struct Renderer {
     u_texture: glow::UniformLocation,
     u_opacity: glow::UniformLocation,
     u_offset: glow::UniformLocation,
+    u_scale: glow::UniformLocation,
+    u_pivot: glow::UniformLocation,
     batch: RectBatch,
     viewport_size: Size,
     atlas: crate::atlas::GlyphAtlas,
-    font: fontdue::Font,
+    font: std::sync::Arc<Vec<fontdue::Font>>,
     clip_stack: Vec<Rect>,
     opacity_stack: Vec<f32>,
     current_opacity: f32,
     translation_stack: Vec<lever_core::types::Point>,
     current_translation: lever_core::types::Point,
+    scale_stack: Vec<f32>,
+    current_scale: f32,
+    pivot_stack: Vec<lever_core::types::Point>,
+    current_pivot: lever_core::types::Point,
 }
 
 impl Renderer {
-    pub fn new(gl: Arc<Context>) -> Result<Self, RendererError> {
+    pub fn new(
+        gl: Arc<Context>,
+        fonts: std::sync::Arc<Vec<fontdue::Font>>,
+    ) -> Result<Self, RendererError> {
         unsafe {
             let vert = compile_shader(&gl, glow::VERTEX_SHADER, VERT_SHADER_SOURCE)?;
             let frag = compile_shader(&gl, glow::FRAGMENT_SHADER, FRAG_SHADER_SOURCE)?;
@@ -144,6 +162,14 @@ impl Renderer {
             let u_offset = gl
                 .get_uniform_location(program, "u_offset")
                 .ok_or(RendererError::GlAllocation("Offset Uniform"))?;
+
+            let u_scale = gl
+                .get_uniform_location(program, "u_scale")
+                .ok_or(RendererError::GlAllocation("Scale Uniform"))?;
+
+            let u_pivot = gl
+                .get_uniform_location(program, "u_pivot")
+                .ok_or(RendererError::GlAllocation("Pivot Uniform"))?;
 
             let vao = gl
                 .create_vertex_array()
@@ -191,13 +217,7 @@ impl Renderer {
             gl.bind_buffer(glow::ELEMENT_ARRAY_BUFFER, Some(ibo));
             gl.bind_vertex_array(None);
 
-            let atlas = crate::atlas::GlyphAtlas::new(gl.clone(), 1024, 1024);
-
-            let font_data = std::fs::read("C:\\Windows\\Fonts\\arial.ttf")
-                .or_else(|_| std::fs::read("C:\\Windows\\Fonts\\segoeui.ttf"))
-                .map_err(|_| RendererError::GlAllocation("System Font"))?;
-            let font = fontdue::Font::from_bytes(font_data, fontdue::FontSettings::default())
-                .map_err(|_| RendererError::GlAllocation("Font Parsing"))?;
+            let atlas = crate::atlas::GlyphAtlas::new(gl.clone(), 2048, 2048);
 
             Ok(Self {
                 gl,
@@ -215,12 +235,18 @@ impl Renderer {
                     height: 0.0,
                 },
                 atlas,
-                font,
+                font: fonts,
                 clip_stack: Vec::new(),
                 opacity_stack: Vec::new(),
                 current_opacity: 1.0,
                 translation_stack: Vec::new(),
                 current_translation: lever_core::types::Point { x: 0.0, y: 0.0 },
+                u_scale,
+                u_pivot,
+                scale_stack: Vec::new(),
+                current_scale: 1.0,
+                pivot_stack: Vec::new(),
+                current_pivot: lever_core::types::Point { x: 0.0, y: 0.0 },
             })
         }
     }
@@ -232,6 +258,10 @@ impl Renderer {
         self.current_opacity = 1.0;
         self.translation_stack.clear();
         self.current_translation = lever_core::types::Point { x: 0.0, y: 0.0 };
+        self.scale_stack.clear();
+        self.current_scale = 1.0;
+        self.pivot_stack.clear();
+        self.current_pivot = lever_core::types::Point { x: 0.0, y: 0.0 };
         unsafe {
             self.gl
                 .viewport(0, 0, viewport.width as i32, viewport.height as i32);
@@ -240,6 +270,11 @@ impl Renderer {
             self.gl.clear(glow::COLOR_BUFFER_BIT);
 
             self.gl.disable(glow::SCISSOR_TEST);
+            self.gl.enable(glow::BLEND);
+            self.gl
+                .blend_func(glow::SRC_ALPHA, glow::ONE_MINUS_SRC_ALPHA);
+            self.gl.disable(glow::DEPTH_TEST);
+            self.gl.disable(glow::CULL_FACE);
 
             self.gl.use_program(Some(self.rect_program));
             self.gl
@@ -247,6 +282,8 @@ impl Renderer {
             self.gl
                 .uniform_1_f32(Some(&self.u_opacity), self.current_opacity);
             self.gl.uniform_2_f32(Some(&self.u_offset), 0.0, 0.0);
+            self.gl.uniform_1_f32(Some(&self.u_scale), 1.0);
+            self.gl.uniform_2_f32(Some(&self.u_pivot), 0.0, 0.0);
 
             self.gl.active_texture(glow::TEXTURE0);
             self.gl
@@ -358,6 +395,39 @@ impl Renderer {
                         );
                     }
                 }
+                DrawCommand::PushScale { scale, pivot } => {
+                    self.flush();
+                    self.scale_stack.push(self.current_scale);
+                    self.pivot_stack.push(self.current_pivot);
+                    self.current_scale *= scale;
+                    self.current_pivot = *pivot;
+                    unsafe {
+                        self.gl
+                            .uniform_1_f32(Some(&self.u_scale), self.current_scale);
+                        self.gl.uniform_2_f32(
+                            Some(&self.u_pivot),
+                            self.current_pivot.x,
+                            self.current_pivot.y,
+                        );
+                    }
+                }
+                DrawCommand::PopScale => {
+                    self.flush();
+                    self.current_scale = self.scale_stack.pop().unwrap_or(1.0);
+                    self.current_pivot = self
+                        .pivot_stack
+                        .pop()
+                        .unwrap_or(lever_core::types::Point { x: 0.0, y: 0.0 });
+                    unsafe {
+                        self.gl
+                            .uniform_1_f32(Some(&self.u_scale), self.current_scale);
+                        self.gl.uniform_2_f32(
+                            Some(&self.u_pivot),
+                            self.current_pivot.x,
+                            self.current_pivot.y,
+                        );
+                    }
+                }
                 DrawCommand::ClipPush(rect) => {
                     self.flush();
 
@@ -455,13 +525,14 @@ impl Renderer {
                 }
                 DrawCommand::Text { pos, glyphs } => {
                     for glyph in glyphs {
+                        let font = &self.font[0];
                         let config = fontdue::layout::GlyphRasterConfig {
                             glyph_index: glyph.glyph_id as u16,
                             px: glyph.font_size,
-                            font_hash: self.font.file_hash(),
+                            font_hash: font.file_hash(),
                         };
 
-                        if let Some(region) = self.atlas.get_or_insert(&self.font, config) {
+                        if let Some(region) = self.atlas.get_or_insert(font, config) {
                             let (atlas_w, atlas_h) = self.atlas.size();
                             let uv_rect = [
                                 region.x as f32 / atlas_w as f32,
@@ -471,8 +542,8 @@ impl Renderer {
                             ];
 
                             let glyph_rect = lever_core::types::Rect {
-                                x: pos.x + glyph.x + region.metrics_x as f32,
-                                y: pos.y + glyph.y - region.metrics_y as f32,
+                                x: pos.x.round() + glyph.x,
+                                y: pos.y.round() + glyph.y,
                                 width: region.width as f32,
                                 height: region.height as f32,
                             };

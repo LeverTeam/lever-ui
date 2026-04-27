@@ -80,10 +80,10 @@ pub fn animated_color(id: &str, target: Color, _duration: f32) -> Color {
     let b_id = format!("{}_b", id);
     let a_id = format!("{}_a", id);
 
-    let r = animated_spring(&r_id, target.r, Spring::SMOOTH);
-    let g = animated_spring(&g_id, target.g, Spring::SMOOTH);
-    let b = animated_spring(&b_id, target.b, Spring::SMOOTH);
-    let a = animated_spring(&a_id, target.a, Spring::SMOOTH);
+    let r = animated_spring(&r_id, target.r, Spring::SNAPPY);
+    let g = animated_spring(&g_id, target.g, Spring::SNAPPY);
+    let b = animated_spring(&b_id, target.b, Spring::SNAPPY);
+    let a = animated_spring(&a_id, target.a, Spring::SNAPPY);
 
     Color::rgba(r, g, b, a)
 }

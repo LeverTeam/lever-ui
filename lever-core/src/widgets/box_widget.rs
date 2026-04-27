@@ -4,34 +4,49 @@ use crate::types::{BoxShadow, Color, Gradient, Rect, SideOffsets, Size};
 use crate::widget::Widget;
 
 pub struct BoxWidget<M> {
+    pub id: Option<String>,
     pub color: Color,
     pub gradient: Option<Gradient>,
     pub shadow: Option<BoxShadow>,
     pub radius: f32,
     pub padding: SideOffsets,
+    pub alignment: crate::layout::Alignment,
     pub width: Option<f32>,
     pub height: Option<f32>,
     pub border_color: Option<Color>,
     pub border_thickness: f32,
     pub child: Option<Box<dyn Widget<M>>>,
+    pub on_click: Option<Box<dyn Fn() -> M>>,
     pub flex: u32,
 }
 
 impl<M> BoxWidget<M> {
     pub fn new(color: Color) -> Self {
         Self {
+            id: None,
             color,
             gradient: None,
             shadow: None,
             radius: 0.0,
             padding: SideOffsets::default(),
+            alignment: crate::layout::Alignment::TopLeft,
             width: None,
             height: None,
             border_color: None,
             border_thickness: 0.0,
             child: None,
+            on_click: None,
             flex: 0,
         }
+    }
+
+    pub fn transparent() -> Self {
+        Self::new(Color::TRANSPARENT)
+    }
+
+    pub fn with_id(mut self, id: impl Into<String>) -> Self {
+        self.id = Some(id.into());
+        self
     }
 
     pub fn with_border(mut self, color: Color, thickness: f32) -> Self {
@@ -57,6 +72,19 @@ impl<M> BoxWidget<M> {
 
     pub fn with_padding(mut self, padding: SideOffsets) -> Self {
         self.padding = padding;
+        self
+    }
+
+    pub fn with_alignment(mut self, alignment: crate::layout::Alignment) -> Self {
+        self.alignment = alignment;
+        self
+    }
+
+    pub fn on_click<F>(mut self, on_click: F) -> Self
+    where
+        F: Fn() -> M + 'static,
+    {
+        self.on_click = Some(Box::new(on_click));
         self
     }
 
@@ -88,6 +116,10 @@ impl<M> BoxWidget<M> {
 }
 
 impl<M: 'static> Widget<M> for BoxWidget<M> {
+    fn id(&self) -> Option<&str> {
+        self.id.as_deref()
+    }
+
     fn layout(
         &self,
         constraints: Constraints,
@@ -150,12 +182,27 @@ impl<M: 'static> Widget<M> for BoxWidget<M> {
         }
 
         if let Some(child) = &self.child {
-            let child_rect = Rect {
-                x: rect.x + self.padding.left,
-                y: rect.y + self.padding.top,
+            let content_size = Size {
                 width: rect.width - self.padding.left - self.padding.right,
                 height: rect.height - self.padding.top - self.padding.bottom,
             };
+
+            let child_res = child.layout(
+                Constraints::loose(content_size.width, content_size.height),
+                &[],
+                text_system,
+                theme,
+            );
+
+            let (ox, oy) = self.alignment.align(child_res.size, content_size);
+
+            let child_rect = Rect {
+                x: rect.x + self.padding.left + ox,
+                y: rect.y + self.padding.top + oy,
+                width: child_res.size.width,
+                height: child_res.size.height,
+            };
+
             child.draw(
                 child_rect,
                 draw_list,
@@ -175,17 +222,42 @@ impl<M: 'static> Widget<M> for BoxWidget<M> {
         theme: &crate::theme::Theme,
         focused_id: &mut Option<String>,
     ) -> Vec<M> {
+        let mut messages = Vec::new();
+
+        if let Some(on_click) = &self.on_click {
+            if let crate::event::FrameworkEvent::PointerUp { position, .. } = event {
+                if rect.contains(*position) {
+                    messages.push(on_click());
+                }
+            }
+        }
+
         if let Some(child) = &mut self.child {
-            let child_rect = Rect {
-                x: rect.x + self.padding.left,
-                y: rect.y + self.padding.top,
+            let content_size = Size {
                 width: rect.width - self.padding.left - self.padding.right,
                 height: rect.height - self.padding.top - self.padding.bottom,
             };
-            child.on_event(event, child_rect, text_system, theme, focused_id)
-        } else {
-            Vec::new()
+
+            let child_res = child.layout(
+                Constraints::loose(content_size.width, content_size.height),
+                &[],
+                text_system,
+                theme,
+            );
+
+            let (ox, oy) = self.alignment.align(child_res.size, content_size);
+
+            let child_rect = Rect {
+                x: rect.x + self.padding.left + ox,
+                y: rect.y + self.padding.top + oy,
+                width: child_res.size.width,
+                height: child_res.size.height,
+            };
+
+            messages.extend(child.on_event(event, child_rect, text_system, theme, focused_id));
         }
+
+        messages
     }
 
     fn flex(&self) -> u32 {

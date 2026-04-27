@@ -33,7 +33,7 @@ impl GlyphAtlas {
             gl.tex_image_2d(
                 glow::TEXTURE_2D,
                 0,
-                glow::RED as i32,
+                glow::R8 as i32,
                 width as i32,
                 height as i32,
                 0,
@@ -44,12 +44,12 @@ impl GlyphAtlas {
             gl.tex_parameter_i32(
                 glow::TEXTURE_2D,
                 glow::TEXTURE_MIN_FILTER,
-                glow::NEAREST as i32,
+                glow::LINEAR as i32,
             );
             gl.tex_parameter_i32(
                 glow::TEXTURE_2D,
                 glow::TEXTURE_MAG_FILTER,
-                glow::NEAREST as i32,
+                glow::LINEAR as i32,
             );
             gl.tex_parameter_i32(
                 glow::TEXTURE_2D,

@@ -117,6 +117,126 @@ impl<M: 'static> Widget<M> for AnimatedTranslation<M> {
         theme: &crate::theme::Theme,
         focused_id: &mut Option<String>,
     ) -> Vec<M> {
+        // Offset the rect so that hit testing works on the visually translated position
+        let translated_rect = rect.translate(self.offset);
+        self.child
+            .on_event(event, translated_rect, text_system, theme, focused_id)
+    }
+}
+
+pub struct AnimatedScale<M> {
+    pub scale: f32,
+    pub child: Box<dyn Widget<M>>,
+}
+
+impl<M> AnimatedScale<M> {
+    pub fn new(scale: f32, child: Box<dyn Widget<M>>) -> Self {
+        Self { scale, child }
+    }
+}
+
+impl<M: 'static> Widget<M> for AnimatedScale<M> {
+    fn id(&self) -> Option<&str> {
+        self.child.id()
+    }
+
+    fn layout(
+        &self,
+        constraints: Constraints,
+        children: &[LayoutNode],
+        text_system: &mut crate::text::TextSystem,
+        theme: &crate::theme::Theme,
+    ) -> LayoutResult {
+        self.child.layout(constraints, children, text_system, theme)
+    }
+
+    fn draw(
+        &self,
+        rect: Rect,
+        draw_list: &mut DrawList,
+        text_system: &mut crate::text::TextSystem,
+        theme: &crate::theme::Theme,
+        focused_id: Option<&str>,
+        pointer_pos: Option<crate::types::Point>,
+    ) {
+        let pivot = crate::types::Point {
+            x: rect.x + rect.width / 2.0,
+            y: rect.y + rect.height / 2.0,
+        };
+        draw_list.push_scale(self.scale, pivot);
+        self.child
+            .draw(rect, draw_list, text_system, theme, focused_id, pointer_pos);
+        draw_list.pop_scale();
+    }
+
+    fn on_event(
+        &mut self,
+        event: &FrameworkEvent,
+        rect: Rect,
+        text_system: &mut crate::text::TextSystem,
+        theme: &crate::theme::Theme,
+        focused_id: &mut Option<String>,
+    ) -> Vec<M> {
+        let scaled_rect = rect.scale_centered(self.scale);
+        self.child
+            .on_event(event, scaled_rect, text_system, theme, focused_id)
+    }
+}
+
+pub struct AnimatedClip<M> {
+    pub clip_rect: Rect,
+    pub child: Box<dyn Widget<M>>,
+}
+
+impl<M> AnimatedClip<M> {
+    pub fn new(clip_rect: Rect, child: Box<dyn Widget<M>>) -> Self {
+        Self { clip_rect, child }
+    }
+}
+
+impl<M: 'static> Widget<M> for AnimatedClip<M> {
+    fn id(&self) -> Option<&str> {
+        self.child.id()
+    }
+
+    fn layout(
+        &self,
+        constraints: Constraints,
+        children: &[LayoutNode],
+        text_system: &mut crate::text::TextSystem,
+        theme: &crate::theme::Theme,
+    ) -> LayoutResult {
+        self.child.layout(constraints, children, text_system, theme)
+    }
+
+    fn draw(
+        &self,
+        rect: Rect,
+        draw_list: &mut DrawList,
+        text_system: &mut crate::text::TextSystem,
+        theme: &crate::theme::Theme,
+        focused_id: Option<&str>,
+        pointer_pos: Option<crate::types::Point>,
+    ) {
+        draw_list.clip_push(self.clip_rect);
+        self.child
+            .draw(rect, draw_list, text_system, theme, focused_id, pointer_pos);
+        draw_list.clip_pop();
+    }
+
+    fn on_event(
+        &mut self,
+        event: &FrameworkEvent,
+        rect: Rect,
+        text_system: &mut crate::text::TextSystem,
+        theme: &crate::theme::Theme,
+        focused_id: &mut Option<String>,
+    ) -> Vec<M> {
+        if let Some(pos) = event.pointer_pos() {
+            if !self.clip_rect.contains(pos) {
+                return Vec::new();
+            }
+        }
         self.child
             .on_event(event, rect, text_system, theme, focused_id)
     }

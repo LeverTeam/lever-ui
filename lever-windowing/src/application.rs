@@ -188,6 +188,12 @@ impl<A: App> ApplicationHandler for AppHandler<A> {
             .make_current(&gl_surface)
             .expect("Failed to make context current");
 
+        // Enable V-Sync
+        let _ = gl_surface.set_swap_interval(
+            &gl_context,
+            glutin::surface::SwapInterval::Wait(std::num::NonZeroU32::new(1).unwrap()),
+        );
+
         let glow_context = unsafe {
             Arc::new(glow::Context::from_loader_function(|s| {
                 let c_str = std::ffi::CString::new(s).unwrap();
@@ -195,7 +201,8 @@ impl<A: App> ApplicationHandler for AppHandler<A> {
             }))
         };
 
-        let mut renderer = Renderer::new(glow_context).expect("Failed to create renderer");
+        let mut renderer = Renderer::new(glow_context, self.text_system.fonts())
+            .expect("Failed to create renderer");
 
         // Initialize application state and load assets
         {
@@ -383,8 +390,13 @@ impl<A: App> ApplicationHandler for AppHandler<A> {
 
     fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
         let now = std::time::Instant::now();
-        let dt = now.duration_since(self.last_frame).as_secs_f32();
+        let mut dt = now.duration_since(self.last_frame).as_secs_f32();
         self.last_frame = now;
+
+        // Cap dt to avoid massive jumps (e.g. during resize or pause)
+        if dt > 0.05 {
+            dt = 0.05;
+        }
 
         // Tick application and framework animations
         self.app.tick(dt);

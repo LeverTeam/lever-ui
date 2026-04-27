@@ -1,20 +1,38 @@
 use crate::types::Color;
-use cosmic_text::{Buffer, FontSystem, Metrics, Shaping, SwashCache};
+use fontdue::Font;
+use fontdue::layout::{CoordinateSystem, Layout, LayoutSettings, TextStyle};
 use std::collections::HashMap;
+use std::sync::Arc;
 
 pub struct TextSystem {
-    pub font_system: FontSystem,
-    pub swash_cache: SwashCache,
-    cache: HashMap<(String, u32, u32), TextLayout>,
+    fonts: Arc<Vec<Font>>,
+    cache: HashMap<CacheKey, TextLayout>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+struct CacheKey {
+    text: String,
+    font_size: u32,
+    max_width: u32,
 }
 
 impl TextSystem {
     pub fn new() -> Self {
+        let font_data = std::fs::read("C:\\Windows\\Fonts\\segoeui.ttf")
+            .or_else(|_| std::fs::read("C:\\Windows\\Fonts\\arial.ttf"))
+            .expect("Failed to load system font");
+
+        let font = Font::from_bytes(font_data, fontdue::FontSettings::default())
+            .expect("Failed to parse font");
+
         Self {
-            font_system: FontSystem::new(),
-            swash_cache: SwashCache::new(),
+            fonts: Arc::new(vec![font]),
             cache: HashMap::new(),
         }
+    }
+
+    pub fn fonts(&self) -> Arc<Vec<Font>> {
+        self.fonts.clone()
     }
 
     pub fn shape(
@@ -24,11 +42,14 @@ impl TextSystem {
         color: Color,
         max_width: Option<f32>,
     ) -> TextLayout {
-        let cache_key = (
-            text.to_string(),
-            (font_size * 100.0) as u32,
-            max_width.map(|w| (w * 10.0) as u32).unwrap_or(0),
-        );
+        // Use rounded font size for rasterization stability
+        let px_size = font_size.round();
+
+        let cache_key = CacheKey {
+            text: text.to_string(),
+            font_size: px_size as u32,
+            max_width: max_width.map(|w| (w * 100.0) as u32).unwrap_or(u32::MAX),
+        };
 
         if let Some(layout) = self.cache.get(&cache_key) {
             let mut result = layout.clone();
@@ -38,73 +59,96 @@ impl TextSystem {
             return result;
         }
 
-        let metrics = Metrics::new(font_size, font_size * 1.2);
-        let mut buffer = Buffer::new(&mut self.font_system, metrics);
-        buffer.set_text(
-            &mut self.font_system,
-            text,
-            &cosmic_text::Attrs::new().family(cosmic_text::Family::Name("Arial")),
-            Shaping::Advanced,
-            None,
-        );
+        let mut layout = Layout::new(CoordinateSystem::PositiveYDown);
+        layout.reset(&LayoutSettings {
+            max_width,
+            ..LayoutSettings::default()
+        });
+        layout.append(&self.fonts, &TextStyle::new(text, px_size, 0));
 
-        if let Some(w) = max_width {
-            buffer.set_size(&mut self.font_system, Some(w), None);
-        }
-
-        buffer.shape_until_scroll(&mut self.font_system, false);
-
-        let mut glyphs = Vec::new();
+        let glyphs_raw = layout.glyphs();
+        let mut glyphs = Vec::with_capacity(glyphs_raw.len());
         let mut width = 0.0f32;
-        let mut cursor_positions = vec![0.0; text.len() + 1];
-        let line_height = buffer.metrics().line_height;
+        let mut cursor_positions = vec![0.0f32; text.len() + 1];
 
-        for run in buffer.layout_runs() {
-            for glyph in run.glyphs.iter() {
-                glyphs.push(GlyphInstance {
-                    glyph_id: glyph.glyph_id as u32,
-                    x: glyph.x.round(),
-                    y: (run.line_y + glyph.y_offset).round(),
-                    color,
-                    font_size,
-                });
-                width = width.max(glyph.x + glyph.w);
+        for g in glyphs_raw {
+            // Add glyph to rendering list
+            glyphs.push(GlyphInstance {
+                glyph_id: g.key.glyph_index as u32,
+                x: g.x, // Preserve fractional position
+                y: g.y, // Preserve fractional position
+                color,
+                font_size: px_size,
+            });
 
-                // Map glyph boundaries to character indices
-                if glyph.end <= text.len() {
-                    cursor_positions[glyph.end] = glyph.x + glyph.w;
-                }
-                if glyph.start < text.len() {
-                    cursor_positions[glyph.start] = glyph.x;
+            // Update measured width
+            width = width.max(g.x + g.width as f32);
+
+            // Update cursor positions for hit testing
+            if g.byte_offset < cursor_positions.len() {
+                cursor_positions[g.byte_offset] = g.x;
+                // Estimate end position of this character
+                let char_len = text[g.byte_offset..]
+                    .chars()
+                    .next()
+                    .map(|c| c.len_utf8())
+                    .unwrap_or(1);
+                let next_idx = g.byte_offset + char_len;
+                if next_idx < cursor_positions.len() {
+                    cursor_positions[next_idx] = g.x + g.width as f32;
                 }
             }
         }
 
-        let layout = TextLayout {
+        // Use fontdue's line calculation for height and centering
+        let (height, vertical_shift) = layout
+            .lines()
+            .map(|lines| {
+                if lines.is_empty() {
+                    (px_size * 1.2, 0.0)
+                } else {
+                    let last = &lines[lines.len() - 1];
+                    let total_height = last.baseline_y - last.min_descent;
+
+                    let first = &lines[0];
+                    let visual_center =
+                        (first.baseline_y + (first.baseline_y - px_size * 0.7)) / 2.0;
+                    let layout_center = total_height / 2.0;
+                    let shift = layout_center - visual_center;
+
+                    (total_height, shift)
+                }
+            })
+            .unwrap_or((px_size * 1.2, 0.0));
+
+        // Apply vertical shift to all glyphs for better centering
+        for glyph in &mut glyphs {
+            glyph.y += vertical_shift;
+        }
+
+        let result = TextLayout {
             glyphs,
-            width,
-            height: buffer.layout_runs().count() as f32 * line_height,
+            width: width.ceil(),
+            height: height.ceil(),
             cursor_positions,
         };
 
-        self.cache.insert(cache_key, layout.clone());
-        layout
+        self.cache.insert(cache_key, result.clone());
+        result
     }
 
     pub fn hit_test(&mut self, text: &str, font_size: f32, x: f32) -> usize {
-        let metrics = Metrics::new(font_size, font_size * 1.2);
-        let mut buffer = Buffer::new(&mut self.font_system, metrics);
-        buffer.set_text(
-            &mut self.font_system,
-            text,
-            &cosmic_text::Attrs::new().family(cosmic_text::Family::Name("Arial")),
-            Shaping::Advanced,
-            None,
-        );
-        buffer.shape_until_scroll(&mut self.font_system, false);
-
-        let cursor = buffer.hit(x, 0.0);
-        cursor.map(|c| c.index).unwrap_or(0)
+        let layout = self.shape(text, font_size, Color::WHITE, None);
+        let mut best = 0;
+        let mut best_dist = f32::MAX;
+        for (i, &pos) in layout.cursor_positions.iter().enumerate() {
+            let dist = (pos - x).abs();
+            if dist < best_dist {
+                best_dist = dist;
+                best = i;
+            }
+        }
+        best
     }
 
     pub fn clear_cache(&mut self) {

@@ -101,3 +101,15 @@ pub enum FrameworkEvent {
         delta: Point,
     },
 }
+
+impl FrameworkEvent {
+    pub fn pointer_pos(&self) -> Option<Point> {
+        match self {
+            FrameworkEvent::PointerMove { position } => Some(*position),
+            FrameworkEvent::PointerDown { position, .. } => Some(*position),
+            FrameworkEvent::PointerUp { position, .. } => Some(*position),
+            FrameworkEvent::Scroll { position, .. } => Some(*position),
+            _ => None,
+        }
+    }
+}

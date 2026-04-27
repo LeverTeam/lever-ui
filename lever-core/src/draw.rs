@@ -41,6 +41,11 @@ pub enum DrawCommand {
         p3: Point,
         color: Color,
     },
+    PushScale {
+        scale: f32,
+        pivot: Point,
+    },
+    PopScale,
 }
 
 pub struct DrawList {
@@ -167,13 +172,17 @@ impl DrawList {
         self.commands.push(DrawCommand::PopTranslation);
     }
 
+    pub fn push_scale(&mut self, scale: f32, pivot: Point) {
+        self.commands.push(DrawCommand::PushScale { scale, pivot });
+    }
+
+    pub fn pop_scale(&mut self) {
+        self.commands.push(DrawCommand::PopScale);
+    }
+
     pub fn triangle(&mut self, p1: Point, p2: Point, p3: Point, color: Color) {
-        self.commands.push(DrawCommand::Triangle {
-            p1,
-            p2,
-            p3,
-            color,
-        });
+        self.commands
+            .push(DrawCommand::Triangle { p1, p2, p3, color });
     }
 
     pub fn commands(&self) -> &[DrawCommand] {
