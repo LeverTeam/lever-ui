@@ -149,8 +149,35 @@ impl FlexLayout {
             },
         });
 
+        let final_main = match self.direction {
+            FlexDirection::Row => final_size.width,
+            FlexDirection::Column => final_size.height,
+        };
+
         let mut child_rects = Vec::with_capacity(children.len());
-        let mut current_main = 0.0;
+        let remaining_main = (final_main - used_main).max(0.0);
+
+        let (mut current_main, spacing) = match self.main_axis_alignment {
+            MainAxisAlignment::Start => (0.0, self.gap),
+            MainAxisAlignment::End => (remaining_main, self.gap),
+            MainAxisAlignment::Center => (remaining_main / 2.0, self.gap),
+            MainAxisAlignment::SpaceBetween => {
+                let s = if children.len() > 1 {
+                    remaining_main / (children.len() - 1) as f32
+                } else {
+                    0.0
+                };
+                (0.0, s + self.gap)
+            }
+            MainAxisAlignment::SpaceAround => {
+                let s = remaining_main / children.len() as f32;
+                (s / 2.0, s + self.gap)
+            }
+            MainAxisAlignment::SpaceEvenly => {
+                let s = remaining_main / (children.len() + 1) as f32;
+                (s, s + self.gap)
+            }
+        };
 
         for res in child_results {
             let rect = match self.direction {
@@ -171,7 +198,7 @@ impl FlexLayout {
                             res.size.height
                         },
                     };
-                    current_main += res.size.width + self.gap;
+                    current_main += res.size.width + spacing;
                     r
                 }
                 FlexDirection::Column => {
@@ -191,7 +218,7 @@ impl FlexLayout {
                         },
                         height: res.size.height,
                     };
-                    current_main += res.size.height + self.gap;
+                    current_main += res.size.height + spacing;
                     r
                 }
             };

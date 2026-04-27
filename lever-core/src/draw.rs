@@ -35,10 +35,17 @@ pub enum DrawCommand {
     PopOpacity,
     PushTranslation(Point),
     PopTranslation,
+    Triangle {
+        p1: Point,
+        p2: Point,
+        p3: Point,
+        color: Color,
+    },
 }
 
 pub struct DrawList {
     commands: Vec<DrawCommand>,
+    deferred_commands: Vec<DrawCommand>,
     clip_stack: Vec<Rect>,
 }
 
@@ -46,6 +53,7 @@ impl DrawList {
     pub fn new() -> Self {
         Self {
             commands: Vec::new(),
+            deferred_commands: Vec::new(),
             clip_stack: Vec::new(),
         }
     }
@@ -159,6 +167,15 @@ impl DrawList {
         self.commands.push(DrawCommand::PopTranslation);
     }
 
+    pub fn triangle(&mut self, p1: Point, p2: Point, p3: Point, color: Color) {
+        self.commands.push(DrawCommand::Triangle {
+            p1,
+            p2,
+            p3,
+            color,
+        });
+    }
+
     pub fn commands(&self) -> &[DrawCommand] {
         &self.commands
     }
@@ -167,8 +184,17 @@ impl DrawList {
         &mut self.commands
     }
 
+    pub fn deferred_commands(&self) -> &[DrawCommand] {
+        &self.deferred_commands
+    }
+
+    pub fn push_deferred(&mut self, command: DrawCommand) {
+        self.deferred_commands.push(command);
+    }
+
     pub fn clear(&mut self) {
         self.commands.clear();
+        self.deferred_commands.clear();
         self.clip_stack.clear();
     }
 }

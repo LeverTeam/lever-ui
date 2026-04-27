@@ -1,141 +1,183 @@
 use lever_core::app::{App, UpdateContext};
-use lever_core::layout::GridTrack;
+use lever_core::layout::{Alignment, CrossAxisAlignment};
 use lever_core::theme::{Theme, ThemeMode};
 use lever_core::types::{Color, SideOffsets};
-use lever_core::widgets::{BoxWidget, Expanded, Flex, Grid, Label, Spacer, ThemeToggle};
-use lever_windowing::application::Application;
-use lever_windowing::config::AppConfig;
+use lever_core::widget::Widget;
+use lever_core::widgets::{
+    child, BoxWidget, Button, ConstraintLayout, Flex, Label, Positioned, Spacer, Stack, PARENT,
+};
+use lever_windowing::{AppConfig, Application};
 
-#[derive(Debug, Clone)]
-enum Message {
-    ThemeModeChanged(ThemeMode),
-}
-
-struct LayoutApp {
+struct LayoutDemoApp {
     theme_mode: ThemeMode,
 }
 
-impl App for LayoutApp {
+#[derive(Clone, Debug)]
+enum Message {
+    ToggleTheme,
+}
+
+impl App for LayoutDemoApp {
     type Message = Message;
 
-    fn update(&mut self, message: Self::Message, _ctx: &mut UpdateContext) {
+    fn update(&mut self, message: Message, _ctx: &mut UpdateContext) {
         match message {
-            Message::ThemeModeChanged(mode) => self.theme_mode = mode,
+            Message::ToggleTheme => {
+                self.theme_mode = match self.theme_mode {
+                    ThemeMode::Dark => ThemeMode::Light,
+                    ThemeMode::Light => ThemeMode::Dark,
+                };
+                _ctx.set_theme(self.theme_mode);
+            }
         }
     }
 
-    fn view(&self) -> Box<dyn lever_core::widget::Widget<Self::Message>> {
+    fn view(&self) -> Box<dyn Widget<Message>> {
         let theme = Theme::for_mode(self.theme_mode);
 
-        let sidebar = BoxWidget::new(theme.surface)
-            .with_padding(SideOffsets::all(24.0))
-            .with_child(Box::new(Flex::column(vec![
-                Box::new(Label::new("Lever UI", 20.0, theme.primary)),
-                Box::new(Spacer::new().with_size(10.0, 32.0)),
-                Box::new(Label::new("Dashboard", 14.0, theme.text)),
-                Box::new(Spacer::new().with_size(10.0, 16.0)),
-                Box::new(Label::new("Settings", 14.0, theme.text_muted)),
-                Box::new(Spacer::new().with_size(10.0, 16.0)),
-                Box::new(Label::new("Profile", 14.0, theme.text_muted)),
-            ])));
+        let header = Box::new(
+            BoxWidget::new(theme.surface)
+                .with_padding(SideOffsets::new(16.0, 24.0, 16.0, 24.0))
+                .with_child(Box::new(Flex::row(vec![
+                    Box::new(Label::new("Layout Enhancements", 24.0, theme.text))
+                        as Box<dyn Widget<Message>>,
+                    Box::new(Spacer::new().with_flex(1)) as Box<dyn Widget<Message>>,
+                    Box::new(Button::new("Toggle Theme").on_press(|| Message::ToggleTheme))
+                        as Box<dyn Widget<Message>>,
+                ]))),
+        ) as Box<dyn Widget<Message>>;
 
-        let main_content = Flex::column(vec![
-            Box::new(
-                Flex::row(vec![
-                    Box::new(Label::new("Complex Layout Demo", 32.0, theme.text).with_flex(1)),
-                    Box::new(
-                        ThemeToggle::new("layout-theme", self.theme_mode)
-                            .on_changed(|mode| Message::ThemeModeChanged(mode)),
-                    ),
-                ])
-                .with_gap(20.0),
-            ),
-            Box::new(Spacer::new().with_size(10.0, 40.0)),
-            Box::new(Label::new("Nested Flex Sections", 18.0, theme.text)),
-            Box::new(Spacer::new().with_size(10.0, 15.0)),
-            Box::new(Flex::row(vec![
-                Box::new(Expanded::new(Box::new(
-                    BoxWidget::new(theme.primary)
-                        .with_radius(theme.radius_md)
-                        .with_padding(SideOffsets::all(20.0))
-                        .with_child(Box::new(Label::new("Flex 1", 14.0, Color::WHITE))),
-                ))),
-                Box::new(Spacer::new().with_size(15.0, 10.0)),
-                Box::new(
-                    Expanded::new(Box::new(
-                        BoxWidget::new(theme.secondary)
-                            .with_radius(theme.radius_md)
-                            .with_padding(SideOffsets::all(20.0))
-                            .with_child(Box::new(Label::new(
-                                "Flex 2 (Higher Weight)",
-                                14.0,
-                                Color::WHITE,
-                            ))),
-                    ))
-                    .with_flex(2),
-                ),
-            ])),
-            Box::new(Spacer::new().with_size(10.0, 40.0)),
-            Box::new(Label::new("Grid Integration", 18.0, theme.text)),
-            Box::new(Spacer::new().with_size(10.0, 15.0)),
-            Box::new(
-                Grid::new(
-                    vec![GridTrack::Flex(1), GridTrack::Flex(1), GridTrack::Flex(1)],
-                    vec![
+        let content = Box::new(
+            BoxWidget::new(theme.background)
+                .with_padding(SideOffsets::all(24.0))
+                .with_child(Box::new(
+                    Flex::column(vec![
+                        // Stack Section
+                        self.section_title("Stack & Positioned", &theme),
                         Box::new(
-                            BoxWidget::new(theme.surface_variant)
+                            BoxWidget::new(Color::rgb(0.2, 0.2, 0.3))
                                 .with_radius(8.0)
-                                .with_padding(SideOffsets::all(15.0))
-                                .with_child(Box::new(Label::new("A", 12.0, theme.text))),
-                        ),
+                                .with_height(200.0)
+                                .with_child(Box::new(
+                                    Stack::new(vec![
+                                        // Background (stretching)
+                                        Box::new(
+                                            Positioned::new(Box::new(
+                                                BoxWidget::new(Color::rgb(0.3, 0.4, 0.6))
+                                                    .with_radius(8.0),
+                                            ))
+                                            .top(0.0)
+                                            .bottom(0.0)
+                                            .left(0.0)
+                                            .right(0.0),
+                                        )
+                                            as Box<dyn Widget<Message>>,
+                                        // Top Left
+                                        Box::new(
+                                            Positioned::new(Box::new(
+                                                BoxWidget::new(Color::rgb(0.8, 0.2, 0.2))
+                                                    .with_size(40.0, 40.0)
+                                                    .with_radius(20.0),
+                                            ))
+                                            .top(10.0)
+                                            .left(10.0),
+                                        )
+                                            as Box<dyn Widget<Message>>,
+                                        // Bottom Right
+                                        Box::new(
+                                            Positioned::new(Box::new(
+                                                BoxWidget::new(Color::rgb(0.2, 0.8, 0.2))
+                                                    .with_size(40.0, 40.0)
+                                                    .with_radius(4.0),
+                                            ))
+                                            .bottom(10.0)
+                                            .right(10.0),
+                                        )
+                                            as Box<dyn Widget<Message>>,
+                                        // Centered Overlay
+                                        Box::new(
+                                            BoxWidget::new(Color::rgb(1.0, 1.0, 1.0))
+                                                .with_padding(SideOffsets::all(8.0))
+                                                .with_radius(4.0)
+                                                .with_child(Box::new(Label::new(
+                                                    "Centered Overlay",
+                                                    12.0,
+                                                    Color::BLACK,
+                                                ))),
+                                        )
+                                            as Box<dyn Widget<Message>>,
+                                    ])
+                                    .with_alignment(Alignment::Center),
+                                )),
+                        ) as Box<dyn Widget<Message>>,
+                        // ConstraintLayout Section
+                        self.section_title("ConstraintLayout", &theme),
                         Box::new(
-                            BoxWidget::new(theme.surface_variant)
+                            BoxWidget::new(Color::rgb(0.2, 0.3, 0.2))
                                 .with_radius(8.0)
-                                .with_padding(SideOffsets::all(15.0))
-                                .with_child(Box::new(Label::new("B", 12.0, theme.text))),
-                        ),
-                        Box::new(
-                            BoxWidget::new(theme.surface_variant)
-                                .with_radius(8.0)
-                                .with_padding(SideOffsets::all(15.0))
-                                .with_child(Box::new(Label::new("C", 12.0, theme.text))),
-                        ),
-                    ],
-                )
-                .with_gap(10.0),
-            ),
-            Box::new(Spacer::new().with_flex(1)),
-            Box::new(Label::new("Bottom Anchored Text", 14.0, theme.text_muted)),
-        ]);
+                                .with_height(200.0)
+                                .with_child(Box::new(
+                                    ConstraintLayout::new()
+                                        .with_child(
+                                            Box::new(
+                                                BoxWidget::new(Color::rgb(0.5, 0.2, 0.7))
+                                                    .with_size(60.0, 60.0)
+                                                    .with_radius(4.0),
+                                            ),
+                                            |c| c.center_x(PARENT, 0.0).top_to_top(PARENT, 20.0),
+                                        )
+                                        .with_child(
+                                            Box::new(Label::new(
+                                                "Anchored label",
+                                                12.0,
+                                                theme.text,
+                                            )),
+                                            |c| {
+                                                c.center_x(PARENT, 0.0)
+                                                    .top_to_bottom(child(0), 10.0)
+                                            },
+                                        )
+                                        .with_child(Box::new(Button::new("Left")), |c| {
+                                            c.right_to_left(child(0), -10.0).center_y(child(0), 0.0)
+                                        })
+                                        .with_child(Box::new(Button::new("Right")), |c| {
+                                            c.left_to_right(child(0), 10.0).center_y(child(0), 0.0)
+                                        }),
+                                )),
+                        ) as Box<dyn Widget<Message>>,
+                    ])
+                    .with_cross_axis_alignment(CrossAxisAlignment::Stretch)
+                    .with_gap(20.0),
+                )),
+        ) as Box<dyn Widget<Message>>;
 
-        let root = Grid::new(
-            vec![GridTrack::Fixed(240.0), GridTrack::Flex(1)],
-            vec![
-                Box::new(sidebar),
-                Box::new(
-                    BoxWidget::new(theme.background)
-                        .with_padding(SideOffsets::all(40.0))
-                        .with_child(Box::new(main_content)),
-                ),
-            ],
-        );
+        Box::new(Flex::column(vec![header, content]).with_flex(1))
+    }
+}
 
-        Box::new(root)
+impl LayoutDemoApp {
+    fn section_title(&self, text: &str, theme: &Theme) -> Box<dyn Widget<Message>> {
+        Box::new(
+            Flex::column(vec![
+                Box::new(Label::new(text, 16.0, theme.text)) as Box<dyn Widget<Message>>,
+                Box::new(BoxWidget::new(theme.border).with_height(1.0)) as Box<dyn Widget<Message>>,
+            ])
+            .with_gap(4.0),
+        )
     }
 }
 
 fn main() {
-    let config = AppConfig {
-        title: "Lever UI - Layout Demo".to_string(),
-        width: 1000,
-        height: 750,
-        clear_color: Color::rgb(0.02, 0.02, 0.03),
-    };
-
-    let app = LayoutApp {
+    let app = LayoutDemoApp {
         theme_mode: ThemeMode::Dark,
     };
 
-    let application = Application::new(config, app);
-    application.run();
+    let config = AppConfig {
+        title: "Lever Layout Debug".to_string(),
+        width: 800,
+        height: 600,
+        clear_color: Color::rgb(0.05, 0.05, 0.05),
+    };
+
+    Application::new(config, app).run();
 }

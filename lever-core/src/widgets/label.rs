@@ -23,6 +23,16 @@ impl<M> Label<M> {
         }
     }
 
+    pub fn with_size(mut self, font_size: f32) -> Self {
+        self.font_size = font_size;
+        self
+    }
+
+    pub fn with_color(mut self, color: Color) -> Self {
+        self.color = color;
+        self
+    }
+
     pub fn with_flex(mut self, flex: u32) -> Self {
         self.flex = flex;
         self

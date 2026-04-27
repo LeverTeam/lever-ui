@@ -1,7 +1,9 @@
+pub mod constraints;
 pub mod flex;
 pub mod grid;
 
 use crate::types::{Rect, Size};
+pub use constraints::*;
 pub use flex::*;
 pub use grid::*;
 
@@ -61,6 +63,39 @@ impl LayoutNode {
         Self {
             rect,
             children: Vec::new(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub enum Alignment {
+    #[default]
+    TopLeft,
+    TopCenter,
+    TopRight,
+    CenterLeft,
+    Center,
+    CenterRight,
+    BottomLeft,
+    BottomCenter,
+    BottomRight,
+}
+
+impl Alignment {
+    pub fn align(&self, child_size: Size, parent_size: Size) -> (f32, f32) {
+        let dx = parent_size.width - child_size.width;
+        let dy = parent_size.height - child_size.height;
+
+        match self {
+            Alignment::TopLeft => (0.0, 0.0),
+            Alignment::TopCenter => (dx / 2.0, 0.0),
+            Alignment::TopRight => (dx, 0.0),
+            Alignment::CenterLeft => (0.0, dy / 2.0),
+            Alignment::Center => (dx / 2.0, dy / 2.0),
+            Alignment::CenterRight => (dx, dy / 2.0),
+            Alignment::BottomLeft => (0.0, dy),
+            Alignment::BottomCenter => (dx / 2.0, dy),
+            Alignment::BottomRight => (dx, dy),
         }
     }
 }

@@ -7,6 +7,8 @@ pub struct Flex<M> {
     pub direction: FlexDirection,
     pub children: Vec<Box<dyn Widget<M>>>,
     pub gap: f32,
+    pub main_axis_alignment: crate::layout::MainAxisAlignment,
+    pub cross_axis_alignment: crate::layout::CrossAxisAlignment,
     pub flex_factor: u32,
 }
 
@@ -16,6 +18,8 @@ impl<M> Flex<M> {
             direction: FlexDirection::Row,
             children,
             gap: 0.0,
+            main_axis_alignment: crate::layout::MainAxisAlignment::Start,
+            cross_axis_alignment: crate::layout::CrossAxisAlignment::Start,
             flex_factor: 0,
         }
     }
@@ -25,6 +29,8 @@ impl<M> Flex<M> {
             direction: FlexDirection::Column,
             children,
             gap: 0.0,
+            main_axis_alignment: crate::layout::MainAxisAlignment::Start,
+            cross_axis_alignment: crate::layout::CrossAxisAlignment::Start,
             flex_factor: 0,
         }
     }
@@ -36,6 +42,19 @@ impl<M> Flex<M> {
 
     pub fn with_flex(mut self, flex: u32) -> Self {
         self.flex_factor = flex;
+        self
+    }
+
+    pub fn with_main_axis_alignment(mut self, alignment: crate::layout::MainAxisAlignment) -> Self {
+        self.main_axis_alignment = alignment;
+        self
+    }
+
+    pub fn with_cross_axis_alignment(
+        mut self,
+        alignment: crate::layout::CrossAxisAlignment,
+    ) -> Self {
+        self.cross_axis_alignment = alignment;
         self
     }
 }
@@ -54,6 +73,8 @@ impl<M: 'static> Widget<M> for Flex<M> {
     ) -> LayoutResult {
         let mut solver = FlexLayout::new(self.direction);
         solver.gap = self.gap;
+        solver.main_axis_alignment = self.main_axis_alignment;
+        solver.cross_axis_alignment = self.cross_axis_alignment;
         let (result, _) = solver.layout(constraints, &self.children, text_system, theme);
         result
     }
@@ -69,6 +90,8 @@ impl<M: 'static> Widget<M> for Flex<M> {
     ) {
         let mut solver = FlexLayout::new(self.direction);
         solver.gap = self.gap;
+        solver.main_axis_alignment = self.main_axis_alignment;
+        solver.cross_axis_alignment = self.cross_axis_alignment;
         let (_result, child_rects) = solver.layout(
             Constraints::tight(rect.width, rect.height),
             &self.children,
@@ -116,6 +139,8 @@ impl<M: 'static> Widget<M> for Flex<M> {
         let mut messages = Vec::new();
         let mut solver = FlexLayout::new(self.direction);
         solver.gap = self.gap;
+        solver.main_axis_alignment = self.main_axis_alignment;
+        solver.cross_axis_alignment = self.cross_axis_alignment;
         let (_result, child_rects) = solver.layout(
             Constraints::tight(rect.width, rect.height),
             &self.children,

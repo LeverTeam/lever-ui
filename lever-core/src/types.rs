@@ -23,6 +23,13 @@ impl Rect {
         p.x >= self.x && p.x < self.x + self.width && p.y >= self.y && p.y < self.y + self.height
     }
 
+    pub fn size(&self) -> Size {
+        Size {
+            width: self.width,
+            height: self.height,
+        }
+    }
+
     pub fn intersect(&self, other: Rect) -> Option<Rect> {
         let x1 = self.x.max(other.x);
         let y1 = self.y.max(other.y);
@@ -166,3 +173,21 @@ impl BoxShadow {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct TextureId(pub u32);
+
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct PositionedOffset {
+    pub top: Option<f32>,
+    pub bottom: Option<f32>,
+    pub left: Option<f32>,
+    pub right: Option<f32>,
+}
+
+impl PositionedOffset {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn is_positioned(&self) -> bool {
+        self.top.is_some() || self.bottom.is_some() || self.left.is_some() || self.right.is_some()
+    }
+}

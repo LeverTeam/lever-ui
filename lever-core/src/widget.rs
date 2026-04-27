@@ -82,6 +82,14 @@ pub trait Widget<M> {
         None
     }
 
+    /// Returns the absolute positioning offset of the widget, if any.
+    ///
+    /// This is used by [`Stack`] to place children at specific coordinates
+    /// relative to the stack's bounds.
+    fn positioned(&self) -> Option<crate::types::PositionedOffset> {
+        None
+    }
+
     /// Called every frame. Used for widget-local animations or state updates.
     fn tick(&mut self, _dt: f32) {}
 }

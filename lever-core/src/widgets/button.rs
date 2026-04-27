@@ -46,6 +46,14 @@ impl<M> Button<M> {
         self.on_click = Some(Box::new(f));
         self
     }
+
+    pub fn on_press<F>(mut self, f: F) -> Self
+    where
+        F: Fn() -> M + 'static,
+    {
+        self.on_click = Some(Box::new(f));
+        self
+    }
 }
 
 impl<M: 'static> Widget<M> for Button<M> {

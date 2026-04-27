@@ -11,6 +11,8 @@ pub struct BoxWidget<M> {
     pub padding: SideOffsets,
     pub width: Option<f32>,
     pub height: Option<f32>,
+    pub border_color: Option<Color>,
+    pub border_thickness: f32,
     pub child: Option<Box<dyn Widget<M>>>,
     pub flex: u32,
 }
@@ -25,9 +27,17 @@ impl<M> BoxWidget<M> {
             padding: SideOffsets::default(),
             width: None,
             height: None,
+            border_color: None,
+            border_thickness: 0.0,
             child: None,
             flex: 0,
         }
+    }
+
+    pub fn with_border(mut self, color: Color, thickness: f32) -> Self {
+        self.border_color = Some(color);
+        self.border_thickness = thickness;
+        self
     }
 
     pub fn with_gradient(mut self, gradient: Gradient) -> Self {
@@ -52,6 +62,16 @@ impl<M> BoxWidget<M> {
 
     pub fn with_size(mut self, width: f32, height: f32) -> Self {
         self.width = Some(width);
+        self.height = Some(height);
+        self
+    }
+
+    pub fn with_width(mut self, width: f32) -> Self {
+        self.width = Some(width);
+        self
+    }
+
+    pub fn with_height(mut self, height: f32) -> Self {
         self.height = Some(height);
         self
     }
@@ -82,8 +102,12 @@ impl<M: 'static> Widget<M> for BoxWidget<M> {
 
         if let Some(child) = &self.child {
             let child_constraints = Constraints::loose(
-                constraints.max_width - self.padding.left - self.padding.right,
-                constraints.max_height - self.padding.top - self.padding.bottom,
+                self.width.unwrap_or(constraints.max_width)
+                    - self.padding.left
+                    - self.padding.right,
+                self.height.unwrap_or(constraints.max_height)
+                    - self.padding.top
+                    - self.padding.bottom,
             );
             let child_res = child.layout(child_constraints, &[], text_system, theme);
             size.width = size
@@ -119,6 +143,10 @@ impl<M: 'static> Widget<M> for BoxWidget<M> {
             } else {
                 draw_list.rounded_rect(rect, self.color, self.radius);
             }
+        }
+
+        if let Some(border_color) = self.border_color {
+            draw_list.stroke_rect(rect, border_color, self.radius, self.border_thickness);
         }
 
         if let Some(child) = &self.child {

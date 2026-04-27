@@ -90,6 +90,8 @@ void main() {
         float fw = max(fwidth(ring_d), 0.0001);
         float alpha = 1.0 - smoothstep(-fw, fw, ring_d);
         frag_color = vec4(v_color.rgb, v_color.a * alpha);
+    } else if (v_mode < 7.5) { // Mode 7: Flat Triangle
+        frag_color = v_color;
     } else {
         frag_color = v_color;
     }
@@ -292,9 +294,25 @@ impl Renderer {
     }
 
     pub fn render(&mut self, draw_list: &DrawList) {
+        self.render_commands(draw_list.commands());
+
+        // Render deferred commands (overlays)
+        if !draw_list.deferred_commands().is_empty() {
+            // Reset state for overlays
+            self.flush();
+            unsafe {
+                self.gl.disable(glow::SCISSOR_TEST);
+                self.current_translation = lever_core::types::Point { x: 0.0, y: 0.0 };
+                self.gl.uniform_2_f32(Some(&self.u_offset), 0.0, 0.0);
+            }
+            self.render_commands(draw_list.deferred_commands());
+        }
+    }
+
+    fn render_commands(&mut self, commands: &[DrawCommand]) {
         self.batch.clear();
 
-        for command in draw_list.commands() {
+        for command in commands {
             match command {
                 DrawCommand::PushOpacity(opacity) => {
                     self.flush();
@@ -470,6 +488,9 @@ impl Renderer {
                     color,
                 } => {
                     self.batch.push_stroke(*rect, *radius, *thickness, *color);
+                }
+                DrawCommand::Triangle { p1, p2, p3, color } => {
+                    self.batch.push_triangle(*p1, *p2, *p3, *color);
                 }
             }
         }

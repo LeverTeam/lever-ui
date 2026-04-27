@@ -1,4 +1,4 @@
-use lever_core::types::{Color, Rect};
+use lever_core::types::{Color, Point, Rect};
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
@@ -371,6 +371,42 @@ impl RectBatch {
             start_index + 2,
             start_index + 3,
         ]);
+    }
+
+    pub fn push_triangle(&mut self, p1: Point, p2: Point, p3: Point, color: Color) {
+        let c = color.to_array();
+        let start_index = self.vertices.len() as u32;
+
+        self.vertices.push(ColoredVertex {
+            position: [p1.x, p1.y],
+            color: c,
+            color2: c,
+            uv: [0.0, 0.0],
+            mode: 7.0,
+            size: [0.0, 0.0],
+            extra: [0.0, 0.0, 0.0, 0.0],
+        });
+        self.vertices.push(ColoredVertex {
+            position: [p2.x, p2.y],
+            color: c,
+            color2: c,
+            uv: [0.0, 0.0],
+            mode: 7.0,
+            size: [0.0, 0.0],
+            extra: [0.0, 0.0, 0.0, 0.0],
+        });
+        self.vertices.push(ColoredVertex {
+            position: [p3.x, p3.y],
+            color: c,
+            color2: c,
+            uv: [0.0, 0.0],
+            mode: 7.0,
+            size: [0.0, 0.0],
+            extra: [0.0, 0.0, 0.0, 0.0],
+        });
+
+        self.indices
+            .extend_from_slice(&[start_index, start_index + 1, start_index + 2]);
     }
 
     pub fn vertices(&self) -> &[ColoredVertex] {
