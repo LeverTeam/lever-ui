@@ -42,6 +42,9 @@ impl TextSystem {
         color: Color,
         max_width: Option<f32>,
     ) -> TextLayout {
+        // Filter out INFINITY or very large values to prevent layout collapse
+        let max_width = max_width.filter(|w| w.is_finite());
+
         // Use rounded font size for rasterization stability
         let px_size = font_size.round();
 

@@ -47,11 +47,11 @@ impl<M: 'static> Widget<M> for Checkbox<M> {
         constraints: Constraints,
         _children: &[LayoutNode],
         text_system: &mut crate::text::TextSystem,
-        _theme: &crate::theme::Theme,
+        theme: &crate::theme::Theme,
     ) -> LayoutResult {
         let mut width = 24.0;
         if let Some(label) = &self.label {
-            let layout = text_system.shape(label, 14.0, Color::WHITE, None);
+            let layout = text_system.shape(label, 14.0, theme.text, None);
             width += 12.0 + layout.width;
         }
 
@@ -84,21 +84,21 @@ impl<M: 'static> Widget<M> for Checkbox<M> {
         let target_bg = if self.is_checked {
             theme.primary
         } else if is_hovered {
-            theme.surface_variant
+            Color::rgba(theme.primary.r, theme.primary.g, theme.primary.b, 0.1)
         } else {
-            Color::rgba(0.0, 0.0, 0.0, 0.0)
+            Color::TRANSPARENT
         };
-        let bg_color = animated_color(&format!("{}_bg", self.id), target_bg, 0.15);
+        let bg_color = animated_color(&format!("{}_bg", self.id), target_bg, 0.2);
 
         // Animate border color
         let target_border = if self.is_checked {
             theme.primary
         } else if is_hovered {
-            theme.text_muted
+            theme.primary
         } else {
             theme.border
         };
-        let border_color = animated_color(&format!("{}_border", self.id), target_border, 0.15);
+        let border_color = animated_color(&format!("{}_border", self.id), target_border, 0.2);
 
         // Draw box
         draw_list.rounded_rect(box_rect, bg_color, theme.radius_sm);
@@ -112,15 +112,42 @@ impl<M: 'static> Widget<M> for Checkbox<M> {
         );
 
         if check_scale > 0.01 {
-            let check_size = 12.0 * check_scale;
-            let check_rect = Rect {
-                x: box_rect.x + (box_rect.width - check_size) / 2.0,
-                y: box_rect.y + (box_rect.height - check_size) / 2.0,
-                width: check_size,
-                height: check_size,
+            let check_size = 14.0;
+            let cx = box_rect.x + (box_rect.width - check_size) / 2.0;
+            let cy = box_rect.y + (box_rect.height - check_size) / 2.0;
+
+            // Draw a proper "V" checkmark using triangles for line segments
+            // Segment 1: (3, 7) to (6, 10)
+            // Segment 2: (6, 10) to (11, 4)
+            // Coordinates are relative to the 14x14 check area
+
+            draw_list.push_scale(
+                check_scale,
+                Point {
+                    x: cx + 7.0,
+                    y: cy + 7.0,
+                },
+            );
+
+            // Draw a proper "V" checkmark using the new line primitive
+            let p1 = Point {
+                x: cx + 3.5,
+                y: cy + 7.5,
+            };
+            let p2 = Point {
+                x: cx + 6.5,
+                y: cy + 10.5,
+            };
+            let p3 = Point {
+                x: cx + 11.5,
+                y: cy + 4.5,
             };
 
-            draw_list.rounded_rect(check_rect, theme.on_primary, 2.0);
+            let thickness = 2.5;
+            draw_list.line(p1, p2, thickness, theme.on_primary);
+            draw_list.line(p2, p3, thickness, theme.on_primary);
+
+            draw_list.pop_scale();
         }
 
         if let Some(label) = &self.label {

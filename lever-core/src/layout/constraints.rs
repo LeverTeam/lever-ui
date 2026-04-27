@@ -8,6 +8,9 @@ pub enum Anchor {
     Right,
     CenterX,
     CenterY,
+    Width,
+    Height,
+    AspectRatio,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -123,6 +126,53 @@ impl ConstraintSet {
         });
         self
     }
+
+    pub fn width(mut self, val: f32) -> Self {
+        self.constraints.push(Constraint {
+            anchor: Anchor::Width,
+            target: Target::Parent,
+            target_anchor: Anchor::Width,
+            offset: val,
+        });
+        self
+    }
+
+    pub fn height(mut self, val: f32) -> Self {
+        self.constraints.push(Constraint {
+            anchor: Anchor::Height,
+            target: Target::Parent,
+            target_anchor: Anchor::Height,
+            offset: val,
+        });
+        self
+    }
+
+    // Semantic helpers
+    pub fn after(self, target: Target, offset: f32) -> Self {
+        self.left_to_right(target, offset)
+    }
+
+    pub fn before(self, target: Target, offset: f32) -> Self {
+        self.right_to_left(target, offset)
+    }
+
+    pub fn below(self, target: Target, offset: f32) -> Self {
+        self.top_to_bottom(target, offset)
+    }
+
+    pub fn above(self, target: Target, offset: f32) -> Self {
+        self.bottom_to_top(target, offset)
+    }
+
+    pub fn bottom_to_top(mut self, target: Target, offset: f32) -> Self {
+        self.constraints.push(Constraint {
+            anchor: Anchor::Bottom,
+            target,
+            target_anchor: Anchor::Top,
+            offset,
+        });
+        self
+    }
 }
 
 pub struct ConstraintSolver {
@@ -135,10 +185,6 @@ impl ConstraintSolver {
     }
 
     pub fn solve(&self, children_constraints: &[ConstraintSet], children_rects: &mut [Rect]) {
-        // Simple iterative solver for basic constraints.
-        // For a real ConstraintLayout, we'd use a more robust solver (like Cassowary),
-        // but for now, we'll do a few passes to resolve dependencies.
-
         for _ in 0..3 {
             // 3 passes should handle most simple chains
             for (i, set) in children_constraints.iter().enumerate() {
@@ -157,6 +203,9 @@ impl ConstraintSolver {
                         Anchor::Right => target_rect.x + target_rect.width,
                         Anchor::CenterX => target_rect.x + target_rect.width / 2.0,
                         Anchor::CenterY => target_rect.y + target_rect.height / 2.0,
+                        Anchor::Width => target_rect.width,
+                        Anchor::Height => target_rect.height,
+                        Anchor::AspectRatio => target_rect.width / target_rect.height,
                     };
 
                     match c.anchor {
@@ -189,6 +238,20 @@ impl ConstraintSolver {
                         }
                         Anchor::CenterY => {
                             rect.y = target_val + c.offset - rect.height / 2.0;
+                        }
+                        Anchor::Width => {
+                            rect.width = c.offset;
+                        }
+                        Anchor::Height => {
+                            rect.height = c.offset;
+                        }
+                        Anchor::AspectRatio => {
+                            // c.offset is the ratio (width / height)
+                            if rect.width > 0.0 && rect.height == 0.0 {
+                                rect.height = rect.width / c.offset;
+                            } else if rect.height > 0.0 && rect.width == 0.0 {
+                                rect.width = rect.height * c.offset;
+                            }
                         }
                     }
                 }

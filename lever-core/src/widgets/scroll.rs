@@ -4,14 +4,14 @@ use crate::layout::{Constraints, LayoutNode, LayoutResult};
 use crate::types::{Point, Rect, Size};
 use crate::widget::Widget;
 
-pub struct ScrollWidget<M> {
+pub struct Scroll<M> {
     pub child: Box<dyn Widget<M>>,
     pub scroll_offset: Point,
     pub on_scroll: Option<Box<dyn Fn(Point) -> M>>,
     pub flex: u32,
 }
 
-impl<M> ScrollWidget<M> {
+impl<M> Scroll<M> {
     pub fn new(child: Box<dyn Widget<M>>) -> Self {
         Self {
             child,
@@ -40,7 +40,7 @@ impl<M> ScrollWidget<M> {
     }
 }
 
-impl<M: 'static> Widget<M> for ScrollWidget<M> {
+impl<M: 'static> Widget<M> for Scroll<M> {
     fn layout(
         &self,
         constraints: Constraints,
@@ -48,9 +48,14 @@ impl<M: 'static> Widget<M> for ScrollWidget<M> {
         text_system: &mut crate::text::TextSystem,
         theme: &crate::theme::Theme,
     ) -> LayoutResult {
-        let child_constraints = Constraints::loose(f32::INFINITY, f32::INFINITY);
-        let _child_res = self
-            .child
+        let child_constraints = Constraints {
+            min_width: constraints.min_width,
+            max_width: constraints.max_width,
+            min_height: 0.0,
+            max_height: f32::INFINITY,
+        };
+
+        self.child
             .layout(child_constraints, &[], text_system, theme);
 
         LayoutResult {
@@ -75,7 +80,7 @@ impl<M: 'static> Widget<M> for ScrollWidget<M> {
         let child_rect = Rect {
             x: rect.x - self.scroll_offset.x,
             y: rect.y - self.scroll_offset.y,
-            width: f32::INFINITY,
+            width: rect.width, // Constrain width to viewport for vertical scrolling
             height: f32::INFINITY,
         };
 

@@ -3,8 +3,15 @@ use crate::layout::{
     ConstraintSet, ConstraintSolver, Constraints, LayoutNode, LayoutResult,
     Target as ConstraintTarget,
 };
+use crate::state::{get_or_set_state, update_state};
 use crate::types::{Rect, Size};
 use crate::widget::Widget;
+
+#[derive(Debug, Clone, Default)]
+struct LayoutCache {
+    solved_rects: Vec<Rect>,
+    parent_size: Size,
+}
 
 pub struct ConstraintLayout<M> {
     pub id: Option<String>,
@@ -48,6 +55,25 @@ impl<M: 'static> Widget<M> for ConstraintLayout<M> {
         text_system: &mut crate::text::TextSystem,
         theme: &crate::theme::Theme,
     ) -> LayoutResult {
+        if let Some(id) = self.id() {
+            let cache = get_or_set_state::<LayoutCache, _>(id, || LayoutCache::default());
+            if cache.parent_size == constraints.max_size() && !cache.solved_rects.is_empty() {
+                // Find bounding box from cache
+                let mut max_x = 0.0f32;
+                let mut max_y = 0.0f32;
+                for r in &cache.solved_rects {
+                    max_x = max_x.max(r.x + r.width);
+                    max_y = max_y.max(r.y + r.height);
+                }
+                return LayoutResult {
+                    size: constraints.clamp_size(Size {
+                        width: max_x,
+                        height: max_y,
+                    }),
+                };
+            }
+        }
+
         // Layout all children with loose constraints first to get their natural sizes
         let mut child_sizes = Vec::with_capacity(self.children.len());
         for child in &self.children {
@@ -117,33 +143,78 @@ impl<M: 'static> Widget<M> for ConstraintLayout<M> {
         focused_id: Option<&str>,
         pointer_pos: Option<crate::types::Point>,
     ) {
-        let mut child_sizes = Vec::with_capacity(self.children.len());
-        for child in &self.children {
-            let res = child.layout(
-                Constraints::loose(rect.width, rect.height),
-                &[],
-                text_system,
-                theme,
-            );
-            child_sizes.push(res.size);
-        }
+        let child_rects = if let Some(id) = self.id() {
+            let mut cache = get_or_set_state::<LayoutCache, _>(id, || LayoutCache::default());
 
-        let mut child_rects: Vec<Rect> = child_sizes
-            .iter()
-            .map(|s| Rect {
+            // If cache is invalid or empty, re-solve
+            if cache.parent_size != rect.size() || cache.solved_rects.len() != self.children.len() {
+                let mut child_sizes = Vec::with_capacity(self.children.len());
+                for child in &self.children {
+                    let res = child.layout(
+                        Constraints::loose(rect.width, rect.height),
+                        &[],
+                        text_system,
+                        theme,
+                    );
+                    child_sizes.push(res.size);
+                }
+
+                let mut solved = child_sizes
+                    .iter()
+                    .map(|s| Rect {
+                        x: 0.0,
+                        y: 0.0,
+                        width: s.width,
+                        height: s.height,
+                    })
+                    .collect::<Vec<_>>();
+
+                let solver = ConstraintSolver::new(Rect {
+                    x: 0.0,
+                    y: 0.0,
+                    width: rect.width,
+                    height: rect.height,
+                });
+                solver.solve(&self.constraints, &mut solved);
+
+                cache.solved_rects = solved.clone();
+                cache.parent_size = rect.size();
+                update_state(id, |s| *s = cache.clone());
+                solved
+            } else {
+                cache.solved_rects.clone()
+            }
+        } else {
+            // No ID, re-solve every time
+            let mut child_sizes = Vec::with_capacity(self.children.len());
+            for child in &self.children {
+                let res = child.layout(
+                    Constraints::loose(rect.width, rect.height),
+                    &[],
+                    text_system,
+                    theme,
+                );
+                child_sizes.push(res.size);
+            }
+
+            let mut solved = child_sizes
+                .iter()
+                .map(|s| Rect {
+                    x: 0.0,
+                    y: 0.0,
+                    width: s.width,
+                    height: s.height,
+                })
+                .collect::<Vec<_>>();
+            let solver = ConstraintSolver::new(Rect {
                 x: 0.0,
                 y: 0.0,
-                width: s.width,
-                height: s.height,
-            })
-            .collect();
-        let solver = ConstraintSolver::new(Rect {
-            x: 0.0,
-            y: 0.0,
-            width: rect.width,
-            height: rect.height,
-        });
-        solver.solve(&self.constraints, &mut child_rects);
+                width: rect.width,
+                height: rect.height,
+            });
+            solver.solve(&self.constraints, &mut solved);
+            solved
+        };
 
         for (i, child) in self.children.iter().enumerate() {
             let mut child_rect = child_rects[i];
@@ -169,33 +240,71 @@ impl<M: 'static> Widget<M> for ConstraintLayout<M> {
         theme: &crate::theme::Theme,
         focused_id: &mut Option<String>,
     ) -> Vec<M> {
-        let mut child_sizes = Vec::with_capacity(self.children.len());
-        for child in &self.children {
-            let res = child.layout(
-                Constraints::loose(rect.width, rect.height),
-                &[],
-                text_system,
-                theme,
-            );
-            child_sizes.push(res.size);
-        }
+        let child_rects = if let Some(id) = self.id() {
+            let cache = get_or_set_state::<LayoutCache, _>(id, || LayoutCache::default());
+            if cache.parent_size == rect.size() && cache.solved_rects.len() == self.children.len() {
+                cache.solved_rects.clone()
+            } else {
+                // Fallback if cache missing
+                let mut child_sizes = Vec::with_capacity(self.children.len());
+                for child in &self.children {
+                    let res = child.layout(
+                        Constraints::loose(rect.width, rect.height),
+                        &[],
+                        text_system,
+                        theme,
+                    );
+                    child_sizes.push(res.size);
+                }
 
-        let mut child_rects: Vec<Rect> = child_sizes
-            .iter()
-            .map(|s| Rect {
+                let mut solved = child_sizes
+                    .iter()
+                    .map(|s| Rect {
+                        x: 0.0,
+                        y: 0.0,
+                        width: s.width,
+                        height: s.height,
+                    })
+                    .collect::<Vec<_>>();
+                let solver = ConstraintSolver::new(Rect {
+                    x: 0.0,
+                    y: 0.0,
+                    width: rect.width,
+                    height: rect.height,
+                });
+                solver.solve(&self.constraints, &mut solved);
+                solved
+            }
+        } else {
+            let mut child_sizes = Vec::with_capacity(self.children.len());
+            for child in &self.children {
+                let res = child.layout(
+                    Constraints::loose(rect.width, rect.height),
+                    &[],
+                    text_system,
+                    theme,
+                );
+                child_sizes.push(res.size);
+            }
+
+            let mut solved = child_sizes
+                .iter()
+                .map(|s| Rect {
+                    x: 0.0,
+                    y: 0.0,
+                    width: s.width,
+                    height: s.height,
+                })
+                .collect::<Vec<_>>();
+            let solver = ConstraintSolver::new(Rect {
                 x: 0.0,
                 y: 0.0,
-                width: s.width,
-                height: s.height,
-            })
-            .collect();
-        let solver = ConstraintSolver::new(Rect {
-            x: 0.0,
-            y: 0.0,
-            width: rect.width,
-            height: rect.height,
-        });
-        solver.solve(&self.constraints, &mut child_rects);
+                width: rect.width,
+                height: rect.height,
+            });
+            solver.solve(&self.constraints, &mut solved);
+            solved
+        };
 
         let mut messages = Vec::new();
         for (i, child) in self.children.iter_mut().enumerate().rev() {

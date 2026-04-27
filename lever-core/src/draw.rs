@@ -185,6 +185,38 @@ impl DrawList {
             .push(DrawCommand::Triangle { p1, p2, p3, color });
     }
 
+    pub fn line(&mut self, p1: Point, p2: Point, thickness: f32, color: Color) {
+        let dx = p2.x - p1.x;
+        let dy = p2.y - p1.y;
+        let len = (dx * dx + dy * dy).sqrt();
+        if len < 0.001 {
+            return;
+        }
+
+        let nx = -dy / len * (thickness / 2.0);
+        let ny = dx / len * (thickness / 2.0);
+
+        let q1 = Point {
+            x: p1.x + nx,
+            y: p1.y + ny,
+        };
+        let q2 = Point {
+            x: p1.x - nx,
+            y: p1.y - ny,
+        };
+        let q3 = Point {
+            x: p2.x + nx,
+            y: p2.y + ny,
+        };
+        let q4 = Point {
+            x: p2.x - nx,
+            y: p2.y - ny,
+        };
+
+        self.triangle(q1, q2, q3, color);
+        self.triangle(q2, q3, q4, color);
+    }
+
     pub fn commands(&self) -> &[DrawCommand] {
         &self.commands
     }

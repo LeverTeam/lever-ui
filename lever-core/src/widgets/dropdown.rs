@@ -8,6 +8,7 @@ use crate::widget::Widget;
 #[derive(Debug, Clone, Default)]
 struct DropdownState {
     is_open: bool,
+    open_anim: f32, // 0.0 to 1.0
 }
 
 pub struct Dropdown<M> {
@@ -70,7 +71,15 @@ impl<M: 'static> Widget<M> for Dropdown<M> {
         _focused_id: Option<&str>,
         pointer_pos: Option<crate::types::Point>,
     ) {
-        let state = get_or_set_state::<DropdownState, _>(&self.id, || DropdownState::default());
+        let mut state = get_or_set_state::<DropdownState, _>(&self.id, || DropdownState::default());
+
+        // Update animation (using fixed dt for now, same as checkbox)
+        let target = if state.is_open { 1.0 } else { 0.0 };
+        if (state.open_anim - target).abs() > 0.001 {
+            state.open_anim += (target - state.open_anim) * 0.2;
+            update_state::<DropdownState, _>(&self.id, |s| s.open_anim = state.open_anim);
+        }
+
         let is_hovered = pointer_pos.map_or(false, |pos| rect.contains(pos));
 
         // Draw the button
@@ -99,28 +108,50 @@ impl<M: 'static> Widget<M> for Dropdown<M> {
             layout.glyphs,
         );
 
-        // Simple triangle for chevron
-        let chevron_color = theme.text_muted;
-        let chevron_size = 8.0;
-        let chevron_height = 5.0;
-        let chevron_x = rect.x + rect.width - 24.0;
-        let chevron_y = rect.y + (rect.height - chevron_height) / 2.0;
+        // Line-based chevron
+        let chevron_color = if state.is_open {
+            theme.primary
+        } else {
+            theme.text_muted
+        };
+        let chevron_center_x = rect.x + rect.width - 20.0;
+        let chevron_center_y = rect.y + rect.height / 2.0;
+        let _rotation = state.open_anim * std::f32::consts::PI;
 
-        draw_list.triangle(
-            Point {
-                x: chevron_x,
-                y: chevron_y,
-            },
-            Point {
-                x: chevron_x + chevron_size,
-                y: chevron_y,
-            },
-            Point {
-                x: chevron_x + chevron_size / 2.0,
-                y: chevron_y + chevron_height,
-            },
-            chevron_color,
-        );
+        draw_list.push_translation(Point {
+            x: chevron_center_x,
+            y: chevron_center_y,
+        });
+        draw_list.push_scale(1.0, Point { x: 0.0, y: 0.0 }); // Placeholder for future rotation if added to draw_list
+
+        // Simpler: just interpolate between down and up points
+        let p1_down = Point { x: -4.0, y: -2.0 };
+        let p2_down = Point { x: 0.0, y: 2.0 };
+        let p3_down = Point { x: 4.0, y: -2.0 };
+
+        let p1_up = Point { x: -4.0, y: 2.0 };
+        let p2_up = Point { x: 0.0, y: -2.0 };
+        let p3_up = Point { x: 4.0, y: 2.0 };
+
+        let t = state.open_anim;
+        let p1 = Point {
+            x: p1_down.x + (p1_up.x - p1_down.x) * t,
+            y: p1_down.y + (p1_up.y - p1_down.y) * t,
+        };
+        let p2 = Point {
+            x: p2_down.x + (p2_up.x - p2_down.x) * t,
+            y: p2_down.y + (p2_up.y - p2_down.y) * t,
+        };
+        let p3 = Point {
+            x: p3_down.x + (p3_up.x - p3_down.x) * t,
+            y: p3_down.y + (p3_up.y - p3_down.y) * t,
+        };
+
+        draw_list.line(p1, p2, 1.8, chevron_color);
+        draw_list.line(p2, p3, 1.8, chevron_color);
+
+        draw_list.pop_scale();
+        draw_list.pop_translation();
 
         // DEFERRED: Draw Menu
         if state.is_open {
@@ -135,6 +166,14 @@ impl<M: 'static> Widget<M> for Dropdown<M> {
                 height: menu_height,
             };
 
+            // Animated Menu Wrapper
+            draw_list.push_opacity(state.open_anim);
+            let pivot = Point {
+                x: rect.x + rect.width / 2.0,
+                y: rect.y + rect.height,
+            };
+            draw_list.push_scale(0.95 + 0.05 * state.open_anim, pivot);
+
             // Shadow and Background
             draw_list.push_deferred(DrawCommand::RoundedRect {
                 rect: menu_rect,
@@ -143,7 +182,7 @@ impl<M: 'static> Widget<M> for Dropdown<M> {
                 shadow: Some(crate::types::BoxShadow {
                     offset: Point { x: 0.0, y: 10.0 },
                     blur: 30.0,
-                    color: Color::rgba(0.0, 0.0, 0.0, 0.3),
+                    color: Color::rgba(0.0, 0.0, 0.0, 0.3 * state.open_anim),
                 }),
             });
             draw_list.push_deferred(DrawCommand::Stroke {
@@ -180,6 +219,9 @@ impl<M: 'static> Widget<M> for Dropdown<M> {
                     glyphs: text_layout.glyphs,
                 });
             }
+
+            draw_list.pop_scale();
+            draw_list.pop_opacity();
         }
     }
 

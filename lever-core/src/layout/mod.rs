@@ -25,6 +25,13 @@ impl Constraints {
         }
     }
 
+    pub fn max_size(&self) -> Size {
+        Size {
+            width: self.max_width,
+            height: self.max_height,
+        }
+    }
+
     pub fn tight(width: f32, height: f32) -> Self {
         let w = width.max(0.0);
         let h = height.max(0.0);

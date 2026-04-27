@@ -2,6 +2,7 @@ use crate::draw::DrawList;
 use crate::layout::{Constraints, FlexDirection, FlexLayout, LayoutNode, LayoutResult};
 use crate::types::Rect;
 use crate::widget::Widget;
+use crate::widgets::{Expanded, Flexible, Spacer};
 
 pub struct Flex<M> {
     pub direction: FlexDirection,
@@ -12,7 +13,7 @@ pub struct Flex<M> {
     pub flex_factor: u32,
 }
 
-impl<M> Flex<M> {
+impl<M: 'static> Flex<M> {
     pub fn row(children: Vec<Box<dyn Widget<M>>>) -> Self {
         Self {
             direction: FlexDirection::Row,
@@ -33,6 +34,26 @@ impl<M> Flex<M> {
             cross_axis_alignment: crate::layout::CrossAxisAlignment::Start,
             flex_factor: 0,
         }
+    }
+
+    pub fn with_child(mut self, child: Box<dyn Widget<M>>) -> Self {
+        self.children.push(child);
+        self
+    }
+
+    pub fn with_expanded(mut self, child: Box<dyn Widget<M>>) -> Self {
+        self.children.push(Box::new(Expanded::new(child)));
+        self
+    }
+
+    pub fn with_flexible(mut self, child: Box<dyn Widget<M>>) -> Self {
+        self.children.push(Box::new(Flexible::new(child)));
+        self
+    }
+
+    pub fn with_spacer(mut self) -> Self {
+        self.children.push(Box::new(Spacer::new().with_flex(1)));
+        self
     }
 
     pub fn with_gap(mut self, gap: f32) -> Self {

@@ -111,6 +111,11 @@ impl Color {
         Self { r, g, b, a }
     }
 
+    pub fn with_alpha(mut self, a: f32) -> Self {
+        self.a = a;
+        self
+    }
+
     pub const fn rgb(r: f32, g: f32, b: f32) -> Self {
         Self { r, g, b, a: 1.0 }
     }
@@ -153,12 +158,19 @@ impl SideOffsets {
     }
 
     pub const fn all(value: f32) -> Self {
-        Self {
-            top: value,
-            right: value,
-            bottom: value,
-            left: value,
-        }
+        Self::new(value, value, value, value)
+    }
+
+    pub const fn with_horizontal(mut self, value: f32) -> Self {
+        self.left = value;
+        self.right = value;
+        self
+    }
+
+    pub const fn with_vertical(mut self, value: f32) -> Self {
+        self.top = value;
+        self.bottom = value;
+        self
     }
 }
 
