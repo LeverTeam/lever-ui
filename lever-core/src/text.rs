@@ -1,9 +1,11 @@
 use crate::types::Color;
 use cosmic_text::{Buffer, FontSystem, Metrics, Shaping, SwashCache};
+use std::collections::HashMap;
 
 pub struct TextSystem {
     pub font_system: FontSystem,
     pub swash_cache: SwashCache,
+    cache: HashMap<(String, u32), TextLayout>,
 }
 
 impl TextSystem {
@@ -11,10 +13,21 @@ impl TextSystem {
         Self {
             font_system: FontSystem::new(),
             swash_cache: SwashCache::new(),
+            cache: HashMap::new(),
         }
     }
 
     pub fn shape(&mut self, text: &str, font_size: f32, color: Color) -> TextLayout {
+        let cache_key = (text.to_string(), (font_size * 100.0) as u32);
+
+        if let Some(layout) = self.cache.get(&cache_key) {
+            let mut result = layout.clone();
+            for glyph in &mut result.glyphs {
+                glyph.color = color;
+            }
+            return result;
+        }
+
         let metrics = Metrics::new(font_size, font_size * 1.2);
         let mut buffer = Buffer::new(&mut self.font_system, metrics);
         buffer.set_text(
@@ -52,12 +65,15 @@ impl TextSystem {
             }
         }
 
-        TextLayout {
+        let layout = TextLayout {
             glyphs,
             width,
             height: line_height,
             cursor_positions,
-        }
+        };
+
+        self.cache.insert(cache_key, layout.clone());
+        layout
     }
 
     pub fn hit_test(&mut self, text: &str, font_size: f32, x: f32) -> usize {
@@ -74,6 +90,10 @@ impl TextSystem {
 
         let cursor = buffer.hit(x, 0.0);
         cursor.map(|c| c.index).unwrap_or(0)
+    }
+
+    pub fn clear_cache(&mut self) {
+        self.cache.clear();
     }
 }
 

@@ -39,13 +39,19 @@ pub enum DrawCommand {
 
 pub struct DrawList {
     commands: Vec<DrawCommand>,
+    clip_stack: Vec<Rect>,
 }
 
 impl DrawList {
     pub fn new() -> Self {
         Self {
             commands: Vec::new(),
+            clip_stack: Vec::new(),
         }
+    }
+
+    pub fn current_clip(&self) -> Option<Rect> {
+        self.clip_stack.last().copied()
     }
 
     pub fn colored_rect(&mut self, rect: Rect, color: Color, corner_radius: f32) {
@@ -90,10 +96,22 @@ impl DrawList {
     }
 
     pub fn clip_push(&mut self, rect: Rect) {
+        let new_clip = if let Some(last) = self.clip_stack.last() {
+            last.intersect(rect).unwrap_or(Rect {
+                x: 0.0,
+                y: 0.0,
+                width: 0.0,
+                height: 0.0,
+            })
+        } else {
+            rect
+        };
+        self.clip_stack.push(new_clip);
         self.commands.push(DrawCommand::ClipPush(rect));
     }
 
     pub fn clip_pop(&mut self) {
+        self.clip_stack.pop();
         self.commands.push(DrawCommand::ClipPop);
     }
 
@@ -151,5 +169,6 @@ impl DrawList {
 
     pub fn clear(&mut self) {
         self.commands.clear();
+        self.clip_stack.clear();
     }
 }

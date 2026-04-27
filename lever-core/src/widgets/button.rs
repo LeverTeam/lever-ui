@@ -6,6 +6,7 @@ use crate::widget::Widget;
 pub struct Button<M> {
     pub label: String,
     pub color: Option<Color>,
+    pub flex: u32,
     pub on_click: Option<Box<dyn Fn() -> M>>,
 }
 
@@ -14,12 +15,18 @@ impl<M> Button<M> {
         Self {
             label: label.into(),
             color: None,
+            flex: 0,
             on_click: None,
         }
     }
 
     pub fn with_color(mut self, color: Color) -> Self {
         self.color = Some(color);
+        self
+    }
+
+    pub fn with_flex(mut self, flex: u32) -> Self {
+        self.flex = flex;
         self
     }
 
@@ -116,5 +123,9 @@ impl<M: 'static> Widget<M> for Button<M> {
             _ => {}
         }
         messages
+    }
+
+    fn flex(&self) -> u32 {
+        self.flex
     }
 }

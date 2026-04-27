@@ -5,11 +5,17 @@ use crate::widget::Widget;
 
 pub struct Center<M> {
     pub child: Box<dyn Widget<M>>,
+    pub flex: u32,
 }
 
 impl<M> Center<M> {
     pub fn new(child: Box<dyn Widget<M>>) -> Self {
-        Self { child }
+        Self { child, flex: 0 }
+    }
+
+    pub fn with_flex(mut self, flex: u32) -> Self {
+        self.flex = flex;
+        self
     }
 }
 
@@ -93,5 +99,9 @@ impl<M: 'static> Widget<M> for Center<M> {
 
         self.child
             .on_event(event, child_rect, text_system, theme, focused_id)
+    }
+
+    fn flex(&self) -> u32 {
+        self.flex
     }
 }

@@ -80,14 +80,28 @@ impl<M: 'static> Widget<M> for Flex<M> {
             let mut child_rect = child_rects[i];
             child_rect.x += rect.x;
             child_rect.y += rect.y;
-            child.draw(
-                child_rect,
-                draw_list,
-                text_system,
-                theme,
-                focused_id,
-                pointer_pos,
-            );
+
+            // Visibility culling:
+            // 1. Check against current DrawList clip (handles ScrollWidget viewport)
+            // 2. Check against parent's bounding rect (if finite)
+            let is_visible = if let Some(clip) = draw_list.current_clip() {
+                clip.intersects(child_rect)
+            } else if rect.width.is_finite() && rect.height.is_finite() {
+                rect.intersects(child_rect)
+            } else {
+                true
+            };
+
+            if is_visible {
+                child.draw(
+                    child_rect,
+                    draw_list,
+                    text_system,
+                    theme,
+                    focused_id,
+                    pointer_pos,
+                );
+            }
         }
     }
 
@@ -114,7 +128,16 @@ impl<M: 'static> Widget<M> for Flex<M> {
             child_rect.x += rect.x;
             child_rect.y += rect.y;
 
-            messages.extend(child.on_event(event, child_rect, text_system, theme, focused_id));
+            // Event culling: only process events if the child is visible
+            let is_visible = if rect.width.is_finite() && rect.height.is_finite() {
+                rect.intersects(child_rect)
+            } else {
+                true
+            };
+
+            if is_visible {
+                messages.extend(child.on_event(event, child_rect, text_system, theme, focused_id));
+            }
         }
         messages
     }

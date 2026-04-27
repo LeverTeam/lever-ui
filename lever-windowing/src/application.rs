@@ -20,12 +20,23 @@ use lever_renderer::Renderer;
 
 use lever_core::layout::Constraints;
 
+/// The main entry point for a Lever application.
+///
+/// `Application` manages the window lifecycle, event loop, and OpenGL context.
+/// It acts as the bridge between the platform-agnostic [`App`] trait and the
+/// underlying windowing system (winit) and renderer (glow).
 pub struct Application<A: App> {
     event_loop: EventLoop<()>,
     handler: AppHandler<A>,
 }
 
 impl<A: App> Application<A> {
+    /// Creates a new Lever application with the given configuration and state.
+    ///
+    /// # Arguments
+    ///
+    /// * `config` - The initial window and framework configuration.
+    /// * `app` - The initial application state.
     pub fn new(config: AppConfig, app: A) -> Self {
         let event_loop = EventLoop::new().expect("Failed to create event loop");
         let handler = AppHandler::new(config, app);
@@ -35,6 +46,9 @@ impl<A: App> Application<A> {
         }
     }
 
+    /// Starts the application's main event loop.
+    ///
+    /// This method blocks until the window is closed or the application exits.
     pub fn run(self) {
         let mut handler = self.handler;
         self.event_loop
@@ -43,6 +57,10 @@ impl<A: App> Application<A> {
     }
 }
 
+/// The internal state handler for the winit event loop.
+///
+/// This struct implements [`ApplicationHandler`] and manages the mapping
+/// of OS events to Lever's internal message-passing system.
 struct AppHandler<A: App> {
     config: AppConfig,
     app: A,

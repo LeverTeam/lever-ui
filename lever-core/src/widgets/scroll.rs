@@ -121,8 +121,8 @@ impl<M: 'static> Widget<M> for ScrollWidget<M> {
         let child_rect = Rect {
             x: rect.x - self.scroll_offset.x,
             y: rect.y - self.scroll_offset.y,
-            width: f32::INFINITY,
-            height: f32::INFINITY,
+            width: rect.width,
+            height: rect.height,
         };
 
         messages.extend(

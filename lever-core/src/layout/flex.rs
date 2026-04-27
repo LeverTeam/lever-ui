@@ -96,26 +96,34 @@ impl FlexLayout {
                 FlexDirection::Row => constraints.max_width,
                 FlexDirection::Column => constraints.max_height,
             };
-            let remaining_main = (available_main - used_main).max(0.0);
-            let main_per_flex = remaining_main / total_flex as f32;
+            if available_main.is_finite() {
+                let remaining_main = (available_main - used_main).max(0.0);
+                let main_per_flex = remaining_main / total_flex as f32;
 
-            for (i, child) in children.iter().enumerate() {
-                let flex = child.flex();
-                if flex > 0 {
-                    let child_main = main_per_flex * flex as f32;
-                    let child_constraints = match self.direction {
-                        FlexDirection::Row => {
-                            Constraints::tight(child_main, constraints.max_height)
+                for (i, child) in children.iter().enumerate() {
+                    let flex = child.flex();
+                    if flex > 0 {
+                        let child_main = main_per_flex * flex as f32;
+                        let child_constraints = match self.direction {
+                            FlexDirection::Row => Constraints {
+                                min_width: child_main,
+                                max_width: child_main,
+                                min_height: 0.0,
+                                max_height: constraints.max_height,
+                            },
+                            FlexDirection::Column => Constraints {
+                                min_width: 0.0,
+                                max_width: constraints.max_width,
+                                min_height: child_main,
+                                max_height: child_main,
+                            },
+                        };
+                        let res = child.layout(child_constraints, &[], text_system, theme);
+                        child_results[i] = res;
+                        match self.direction {
+                            FlexDirection::Row => max_cross = max_cross.max(res.size.height),
+                            FlexDirection::Column => max_cross = max_cross.max(res.size.width),
                         }
-                        FlexDirection::Column => {
-                            Constraints::tight(constraints.max_width, child_main)
-                        }
-                    };
-                    let res = child.layout(child_constraints, &[], text_system, theme);
-                    child_results[i] = res;
-                    match self.direction {
-                        FlexDirection::Row => max_cross = max_cross.max(res.size.height),
-                        FlexDirection::Column => max_cross = max_cross.max(res.size.width),
                     }
                 }
             }

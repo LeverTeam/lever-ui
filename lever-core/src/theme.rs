@@ -1,8 +1,11 @@
 use crate::types::Color;
 
+/// Defines the color scheme mode for the application.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ThemeMode {
+    /// Dark color scheme with deep backgrounds and light text.
     Dark,
+    /// Light color scheme with bright backgrounds and dark text.
     Light,
 }
 
@@ -12,29 +15,52 @@ impl Default for ThemeMode {
     }
 }
 
+/// A comprehensive set of visual tokens defining the application's design system.
+///
+/// `Theme` includes colors, border radii, and spacing tokens used by standard widgets
+/// to ensure a consistent look and feel across the application.
 #[derive(Debug, Clone)]
 pub struct Theme {
+    /// The root background color of the window.
     pub background: Color,
+    /// The color for card-like surfaces and containers.
     pub surface: Color,
+    /// A secondary surface color for grouping or distinguishing elements.
     pub surface_variant: Color,
+    /// The primary brand color used for call-to-action elements.
     pub primary: Color,
+    /// The primary color when hovered.
     pub primary_hover: Color,
+    /// High-contrast color for text or icons placed on a primary background.
     pub on_primary: Color,
+    /// Neutral secondary color for less prominent elements.
     pub secondary: Color,
+    /// Color indicating success or positive status.
     pub success: Color,
+    /// Color indicating danger, errors, or destructive actions.
     pub danger: Color,
+    /// The standard text color.
     pub text: Color,
+    /// A lower-contrast text color for labels or metadata.
     pub text_muted: Color,
+    /// The color for outlines and separators.
     pub border: Color,
+    /// Small border radius (e.g., for buttons).
     pub radius_sm: f32,
+    /// Medium border radius (e.g., for cards).
     pub radius_md: f32,
+    /// Large border radius (e.g., for modal dialogs).
     pub radius_lg: f32,
+    /// Small padding/spacing token.
     pub padding_sm: f32,
+    /// Medium padding/spacing token.
     pub padding_md: f32,
+    /// The color used for box shadows.
     pub shadow_color: Color,
 }
 
 impl Theme {
+    /// Returns the default theme for the specified mode.
     pub fn for_mode(mode: ThemeMode) -> Self {
         match mode {
             ThemeMode::Dark => Self::dark(),
@@ -42,6 +68,7 @@ impl Theme {
         }
     }
 
+    /// The default dark theme.
     pub fn dark() -> Self {
         Self {
             background: Color::rgb(0.02, 0.02, 0.03),
@@ -65,6 +92,7 @@ impl Theme {
         }
     }
 
+    /// The default light theme.
     pub fn light() -> Self {
         Self {
             background: Color::rgb(0.96, 0.96, 0.98),
@@ -88,6 +116,7 @@ impl Theme {
         }
     }
 
+    /// Linearly interpolates between two themes. Used for smooth theme transitions.
     pub fn lerp(a: &Self, b: &Self, t: f32) -> Self {
         Self {
             background: Color::lerp(a.background, b.background, t),

@@ -112,7 +112,7 @@ impl GridLayout {
         }
 
         // Handle Flex tracks
-        if total_flex_cols > 0 {
+        if total_flex_cols > 0 && constraints.max_width.is_finite() {
             let remaining_width = (constraints.max_width - used_width).max(0.0);
             let width_per_flex = remaining_width / total_flex_cols as f32;
             for (i, track) in self.columns.iter().enumerate() {
@@ -123,7 +123,7 @@ impl GridLayout {
             }
         }
 
-        if total_flex_rows > 0 {
+        if total_flex_rows > 0 && constraints.max_height.is_finite() {
             let remaining_height = (constraints.max_height - used_height).max(0.0);
             let height_per_flex = remaining_height / total_flex_rows as f32;
             for (i, track) in self.rows.iter().enumerate() {
@@ -134,9 +134,25 @@ impl GridLayout {
             }
         }
 
+        let mut final_width = used_width;
+        let mut final_height = used_height;
+
+        if final_width.is_nan() || final_width.is_infinite() {
+            final_width = used_width.max(0.0);
+            if final_width.is_infinite() {
+                final_width = 0.0;
+            }
+        }
+        if final_height.is_nan() || final_height.is_infinite() {
+            final_height = used_height.max(0.0);
+            if final_height.is_infinite() {
+                final_height = 0.0;
+            }
+        }
+
         let final_size = constraints.clamp_size(Size {
-            width: used_width,
-            height: used_height,
+            width: final_width,
+            height: final_height,
         });
 
         let mut child_rects = Vec::with_capacity(children.len());

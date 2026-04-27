@@ -1,17 +1,20 @@
 use lever_core::app::{App, UpdateContext};
+use lever_core::theme::{Theme, ThemeMode};
 use lever_core::types::{Color, Point, SideOffsets};
-use lever_core::widgets::{BoxWidget, Center, Flex, Label, ScrollWidget, Spacer};
+use lever_core::widgets::{BoxWidget, Flex, Label, ScrollWidget, Spacer, ThemeToggle};
 use lever_windowing::application::Application;
 use lever_windowing::config::AppConfig;
-
-struct ScrollDemo {
-    target_offset: Point,
-    current_offset: Point,
-}
 
 #[derive(Debug, Clone)]
 enum Message {
     ScrollTo(Point),
+    ThemeModeChanged(ThemeMode),
+}
+
+struct ScrollDemo {
+    target_offset: Point,
+    current_offset: Point,
+    theme_mode: ThemeMode,
 }
 
 impl App for ScrollDemo {
@@ -21,6 +24,9 @@ impl App for ScrollDemo {
         match message {
             Message::ScrollTo(offset) => {
                 self.target_offset = offset;
+            }
+            Message::ThemeModeChanged(mode) => {
+                self.theme_mode = mode;
             }
         }
     }
@@ -32,38 +38,60 @@ impl App for ScrollDemo {
     }
 
     fn view(&self) -> Box<dyn lever_core::widget::Widget<Self::Message>> {
+        let theme = Theme::for_mode(self.theme_mode);
+
         let mut items = Vec::new();
-        for i in 1..=50 {
+        for i in 1..=100 {
             items.push(Box::new(
                 BoxWidget::new(if i % 2 == 0 {
-                    Color::rgb(0.2, 0.2, 0.2)
+                    theme.surface
                 } else {
-                    Color::rgb(0.15, 0.15, 0.15)
+                    theme.surface_variant
                 })
-                .with_padding(SideOffsets::all(15.0))
-                .with_radius(4.0)
+                .with_padding(SideOffsets::all(20.0))
+                .with_radius(theme.radius_md)
                 .with_child(Box::new(Label::new(
-                    format!("Item #{}", i),
+                    format!("Scroll Item #{}", i),
                     16.0,
-                    Color::rgb(0.9, 0.9, 0.9),
+                    theme.text,
                 ))),
             )
                 as Box<dyn lever_core::widget::Widget<Self::Message>>);
-            items.push(Box::new(Spacer::height(5.0)));
+            items.push(Box::new(Spacer::new().with_size(10.0, 8.0)));
         }
 
         let content = Flex::column(items);
 
-        Box::new(Center::new(Box::new(
-            BoxWidget::new(Color::rgb(0.1, 0.1, 0.1))
-                .with_radius(8.0)
-                .with_padding(SideOffsets::all(20.0))
-                .with_child(Box::new(
-                    ScrollWidget::new(Box::new(content))
-                        .with_offset(self.current_offset)
-                        .on_scroll(Message::ScrollTo),
-                )),
-        )))
+        Box::new(
+            BoxWidget::new(theme.background)
+                .with_padding(SideOffsets::all(40.0))
+                .with_child(Box::new(Flex::column(vec![
+                    Box::new(Flex::row(vec![
+                        Box::new(
+                            Flex::column(vec![
+                                Box::new(Label::new("Smooth Scroll Demo", 32.0, theme.text)),
+                                Box::new(Label::new(
+                                    "Scroll with mouse wheel or trackpad",
+                                    16.0,
+                                    theme.text_muted,
+                                )),
+                            ])
+                            .with_flex(1),
+                        ),
+                        Box::new(
+                            ThemeToggle::new("scroll-theme", self.theme_mode)
+                                .on_changed(|mode| Message::ThemeModeChanged(mode)),
+                        ),
+                    ])),
+                    Box::new(Spacer::new().with_size(10.0, 30.0)),
+                    Box::new(
+                        ScrollWidget::new(Box::new(content))
+                            .with_offset(self.current_offset)
+                            .on_scroll(Message::ScrollTo)
+                            .with_flex(1),
+                    ),
+                ]))),
+        )
     }
 }
 
@@ -71,14 +99,14 @@ fn main() {
     let app = ScrollDemo {
         target_offset: Point::default(),
         current_offset: Point::default(),
+        theme_mode: ThemeMode::Dark,
     };
     let config = AppConfig {
         title: "Lever UI - Smooth Scroll Demo".to_string(),
-        width: 600,
-        height: 500,
-        clear_color: Color::rgb(0.05, 0.05, 0.05),
+        width: 800,
+        height: 700,
+        clear_color: Color::rgb(0.02, 0.02, 0.03),
     };
     let application = Application::new(config, app);
     application.run();
 }
-

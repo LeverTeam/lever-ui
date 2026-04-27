@@ -8,6 +8,7 @@ pub struct Label<M> {
     pub text: String,
     pub font_size: f32,
     pub color: Color,
+    pub flex: u32,
     _marker: PhantomData<M>,
 }
 
@@ -17,8 +18,14 @@ impl<M> Label<M> {
             text: text.into(),
             font_size,
             color,
+            flex: 0,
             _marker: PhantomData,
         }
+    }
+
+    pub fn with_flex(mut self, flex: u32) -> Self {
+        self.flex = flex;
+        self
     }
 }
 
@@ -68,10 +75,8 @@ impl<M: 'static> Widget<M> for Label<M> {
     ) -> Vec<M> {
         Vec::new()
     }
+
+    fn flex(&self) -> u32 {
+        self.flex
+    }
 }
-
-
-
-
-
-

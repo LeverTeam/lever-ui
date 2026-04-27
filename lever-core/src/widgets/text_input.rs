@@ -9,6 +9,7 @@ pub struct TextInput<M> {
     pub text: String,
     pub placeholder: String,
     pub cursor_index: usize,
+    pub flex: u32,
     pub on_input: Option<Box<dyn Fn(String, usize) -> M>>,
 }
 
@@ -19,6 +20,7 @@ impl<M> TextInput<M> {
             text: String::new(),
             placeholder: String::new(),
             cursor_index: 0,
+            flex: 0,
             on_input: None,
         }
     }
@@ -36,6 +38,11 @@ impl<M> TextInput<M> {
 
     pub fn with_cursor(mut self, index: usize) -> Self {
         self.cursor_index = index.min(self.text.len());
+        self
+    }
+
+    pub fn with_flex(mut self, flex: u32) -> Self {
+        self.flex = flex;
         self
     }
 
@@ -193,5 +200,8 @@ impl<M: 'static> Widget<M> for TextInput<M> {
         }
         messages
     }
-}
 
+    fn flex(&self) -> u32 {
+        self.flex
+    }
+}
