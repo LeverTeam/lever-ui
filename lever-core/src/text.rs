@@ -14,6 +14,7 @@ struct CacheKey {
     text: String,
     font_size: u32,
     max_width: u32,
+    align: crate::types::TextAlign,
 }
 
 impl TextSystem {
@@ -41,6 +42,7 @@ impl TextSystem {
         font_size: f32,
         color: Color,
         max_width: Option<f32>,
+        align: crate::types::TextAlign,
     ) -> TextLayout {
         // Filter out INFINITY or very large values to prevent layout collapse
         let max_width = max_width.filter(|w| w.is_finite());
@@ -52,6 +54,7 @@ impl TextSystem {
             text: text.to_string(),
             font_size: px_size as u32,
             max_width: max_width.map(|w| (w * 100.0) as u32).unwrap_or(u32::MAX),
+            align,
         };
 
         if let Some(layout) = self.cache.get(&cache_key) {
@@ -65,6 +68,11 @@ impl TextSystem {
         let mut layout = Layout::new(CoordinateSystem::PositiveYDown);
         layout.reset(&LayoutSettings {
             max_width,
+            horizontal_align: match align {
+                crate::types::TextAlign::Left => fontdue::layout::HorizontalAlign::Left,
+                crate::types::TextAlign::Center => fontdue::layout::HorizontalAlign::Center,
+                crate::types::TextAlign::Right => fontdue::layout::HorizontalAlign::Right,
+            },
             ..LayoutSettings::default()
         });
         layout.append(&self.fonts, &TextStyle::new(text, px_size, 0));
@@ -141,7 +149,13 @@ impl TextSystem {
     }
 
     pub fn hit_test(&mut self, text: &str, font_size: f32, x: f32) -> usize {
-        let layout = self.shape(text, font_size, Color::WHITE, None);
+        let layout = self.shape(
+            text,
+            font_size,
+            Color::WHITE,
+            None,
+            crate::types::TextAlign::Left,
+        );
         let mut best = 0;
         let mut best_dist = f32::MAX;
         for (i, &pos) in layout.cursor_positions.iter().enumerate() {

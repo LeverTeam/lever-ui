@@ -220,7 +220,6 @@ impl<M: 'static> Widget<M> for ConstraintLayout<M> {
             let mut child_rect = child_rects[i];
             child_rect.x += rect.x;
             child_rect.y += rect.y;
-
             child.draw(
                 child_rect,
                 draw_list,
@@ -239,6 +238,7 @@ impl<M: 'static> Widget<M> for ConstraintLayout<M> {
         text_system: &mut crate::text::TextSystem,
         theme: &crate::theme::Theme,
         focused_id: &mut Option<String>,
+        consumed: &mut bool,
     ) -> Vec<M> {
         let child_rects = if let Some(id) = self.id() {
             let cache = get_or_set_state::<LayoutCache, _>(id, || LayoutCache::default());
@@ -296,7 +296,7 @@ impl<M: 'static> Widget<M> for ConstraintLayout<M> {
                     height: s.height,
                 })
                 .collect::<Vec<_>>();
-            let solver = ConstraintSolver::new(Rect {
+            let solver = crate::layout::ConstraintSolver::new(Rect {
                 x: 0.0,
                 y: 0.0,
                 width: rect.width,
@@ -307,17 +307,50 @@ impl<M: 'static> Widget<M> for ConstraintLayout<M> {
         };
 
         let mut messages = Vec::new();
-        for (i, child) in self.children.iter_mut().enumerate().rev() {
-            let mut child_rect = child_rects[i];
-            child_rect.x += rect.x;
-            child_rect.y += rect.y;
+        let current_focused = focused_id.clone();
 
-            let res = child.on_event(event, child_rect, text_system, theme, focused_id);
-            if !res.is_empty() {
-                messages.extend(res);
-                return messages;
+        if let Some(fid) = &current_focused {
+            for (i, child) in self.children.iter_mut().enumerate().rev() {
+                if child.id() == Some(fid) {
+                    let mut child_rect = child_rects[i];
+                    child_rect.x += rect.x;
+                    child_rect.y += rect.y;
+                    messages.extend(child.on_event(
+                        event,
+                        child_rect,
+                        text_system,
+                        theme,
+                        focused_id,
+                        consumed,
+                    ));
+                    if *consumed {
+                        return messages;
+                    }
+                }
             }
         }
+
+        for (i, child) in self.children.iter_mut().enumerate().rev() {
+            let is_focused =
+                current_focused.is_some() && child.id().as_deref() == current_focused.as_deref();
+            if !is_focused {
+                let mut child_rect = child_rects[i];
+                child_rect.x += rect.x;
+                child_rect.y += rect.y;
+                messages.extend(child.on_event(
+                    event,
+                    child_rect,
+                    text_system,
+                    theme,
+                    focused_id,
+                    consumed,
+                ));
+                if *consumed {
+                    return messages;
+                }
+            }
+        }
+
         messages
     }
 }

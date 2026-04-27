@@ -98,7 +98,13 @@ impl<M: 'static> Widget<M> for TextInput<M> {
         let inner_rect = rect.inset(12.0, 0.0);
 
         if self.text.is_empty() {
-            let layout = text_system.shape(&self.placeholder, 14.0, theme.text_muted, None);
+            let layout = text_system.shape(
+                &self.placeholder,
+                14.0,
+                theme.text_muted,
+                None,
+                crate::types::TextAlign::Left,
+            );
             draw_list.text(
                 Point {
                     x: inner_rect.x,
@@ -107,7 +113,13 @@ impl<M: 'static> Widget<M> for TextInput<M> {
                 layout.glyphs,
             );
         } else {
-            let layout = text_system.shape(&self.text, 14.0, theme.text, None);
+            let layout = text_system.shape(
+                &self.text,
+                14.0,
+                theme.text,
+                None,
+                crate::types::TextAlign::Left,
+            );
             draw_list.text(
                 Point {
                     x: inner_rect.x,
@@ -140,11 +152,13 @@ impl<M: 'static> Widget<M> for TextInput<M> {
         text_system: &mut crate::text::TextSystem,
         _theme: &crate::theme::Theme,
         focused_id: &mut Option<String>,
+        consumed: &mut bool,
     ) -> Vec<M> {
         let mut messages = Vec::new();
         match event {
             FrameworkEvent::PointerDown { position, button } => {
                 if *button == PointerButton::Primary && rect.contains(*position) {
+                    *consumed = true;
                     *focused_id = Some(self.id.clone());
 
                     let inner_rect = rect.inset(12.0, 0.0);

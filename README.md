@@ -9,7 +9,7 @@ A cross-platform GPU-accelerated UI framework for Rust with a message-driven arc
 ![Rust](https://img.shields.io/badge/Rust-000000?style=flat-square&logo=rust&logoColor=white)
 ![OpenGL](https://img.shields.io/badge/OpenGL-5586A4?style=flat-square&logo=opengl&logoColor=white)
 
-## Installation ![Platform](https://img.shields.io/badge/platform-windows%20%7C%20macos%20%7C%20linux-lightgrey?style=flat-square)
+## Installation
 
 ```powershell
 cargo build

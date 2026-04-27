@@ -212,6 +212,7 @@ impl<M: 'static> Widget<M> for Stack<M> {
         text_system: &mut crate::text::TextSystem,
         theme: &crate::theme::Theme,
         focused_id: &mut Option<String>,
+        consumed: &mut bool,
     ) -> Vec<M> {
         let mut child_sizes = Vec::with_capacity(self.children.len());
         for child in &self.children {
@@ -243,13 +244,44 @@ impl<M: 'static> Widget<M> for Stack<M> {
         let child_rects = self.calculate_child_rects(rect, &child_sizes);
 
         let mut messages = Vec::new();
-        for (i, child) in self.children.iter_mut().enumerate().rev() {
-            let res = child.on_event(event, child_rects[i], text_system, theme, focused_id);
-            if !res.is_empty() {
-                messages.extend(res);
-                return messages;
+        let current_focused = focused_id.clone();
+
+        if let Some(fid) = &current_focused {
+            for (i, child) in self.children.iter_mut().enumerate().rev() {
+                if child.id() == Some(fid) {
+                    messages.extend(child.on_event(
+                        event,
+                        child_rects[i],
+                        text_system,
+                        theme,
+                        focused_id,
+                        consumed,
+                    ));
+                    if *consumed {
+                        return messages;
+                    }
+                }
             }
         }
+
+        for (i, child) in self.children.iter_mut().enumerate().rev() {
+            let is_focused =
+                current_focused.is_some() && child.id().as_deref() == current_focused.as_deref();
+            if !is_focused {
+                messages.extend(child.on_event(
+                    event,
+                    child_rects[i],
+                    text_system,
+                    theme,
+                    focused_id,
+                    consumed,
+                ));
+                if *consumed {
+                    return messages;
+                }
+            }
+        }
+
         messages
     }
 }

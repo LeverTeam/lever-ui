@@ -51,7 +51,8 @@ impl<M: 'static> Widget<M> for Checkbox<M> {
     ) -> LayoutResult {
         let mut width = 24.0;
         if let Some(label) = &self.label {
-            let layout = text_system.shape(label, 14.0, theme.text, None);
+            let layout =
+                text_system.shape(label, 14.0, theme.text, None, crate::types::TextAlign::Left);
             width += 12.0 + layout.width;
         }
 
@@ -151,7 +152,8 @@ impl<M: 'static> Widget<M> for Checkbox<M> {
         }
 
         if let Some(label) = &self.label {
-            let layout = text_system.shape(label, 14.0, theme.text, None);
+            let layout =
+                text_system.shape(label, 14.0, theme.text, None, crate::types::TextAlign::Left);
             draw_list.text(
                 Point {
                     x: (rect.x + 36.0).round(),
@@ -168,12 +170,15 @@ impl<M: 'static> Widget<M> for Checkbox<M> {
         rect: Rect,
         _text_system: &mut crate::text::TextSystem,
         _theme: &crate::theme::Theme,
-        _focused_id: &mut Option<String>,
+        focused_id: &mut Option<String>,
+        consumed: &mut bool,
     ) -> Vec<M> {
         let mut messages = Vec::new();
         match event {
             FrameworkEvent::PointerDown { position, button } => {
                 if *button == PointerButton::Primary && rect.contains(*position) {
+                    *consumed = true;
+                    *focused_id = Some(self.id.clone());
                     self.is_checked = !self.is_checked;
                     if let Some(on_changed) = &self.on_changed {
                         messages.push(on_changed(self.is_checked));

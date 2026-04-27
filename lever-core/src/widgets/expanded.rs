@@ -1,3 +1,4 @@
+use crate::FrameworkEvent;
 use crate::draw::DrawList;
 use crate::layout::{Alignment, Constraints, LayoutNode, LayoutResult};
 use crate::types::Rect;
@@ -104,30 +105,29 @@ impl<M: 'static> Widget<M> for Expanded<M> {
 
     fn on_event(
         &mut self,
-        event: &crate::event::FrameworkEvent,
+        event: &FrameworkEvent,
         rect: Rect,
         text_system: &mut crate::text::TextSystem,
         theme: &crate::theme::Theme,
         focused_id: &mut Option<String>,
+        consumed: &mut bool,
     ) -> Vec<M> {
-        let child_constraints = match self.fit {
-            FlexFit::Tight => Constraints::tight(rect.width, rect.height),
-            FlexFit::Loose => Constraints::loose(rect.width, rect.height),
-        };
-        let res = self
-            .child
-            .layout(child_constraints, &[], text_system, theme);
+        let child_res = self.child.layout(
+            Constraints::loose(rect.width, rect.height),
+            &[],
+            text_system,
+            theme,
+        );
 
-        let (dx, dy) = self.alignment.align(res.size, rect.size());
         let child_rect = Rect {
-            x: rect.x + dx,
-            y: rect.y + dy,
-            width: res.size.width,
-            height: res.size.height,
+            x: rect.x + (rect.width - child_res.size.width) / 2.0,
+            y: rect.y + (rect.height - child_res.size.height) / 2.0,
+            width: child_res.size.width,
+            height: child_res.size.height,
         };
 
         self.child
-            .on_event(event, child_rect, text_system, theme, focused_id)
+            .on_event(event, child_rect, text_system, theme, focused_id, consumed)
     }
 
     fn flex(&self) -> u32 {

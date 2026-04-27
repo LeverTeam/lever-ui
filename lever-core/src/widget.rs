@@ -63,8 +63,16 @@ pub trait Widget<M> {
         _text_system: &mut crate::text::TextSystem,
         _theme: &crate::theme::Theme,
         _focused_id: &mut Option<String>,
+        _consumed: &mut bool,
     ) -> Vec<M> {
         Vec::new()
+    }
+
+    /// Checks if a pointer position is within the interactable area of the widget.
+    ///
+    /// The default implementation checks if the position is within the layout rectangle.
+    fn hit_test(&self, pos: crate::types::Point, rect: Rect) -> bool {
+        rect.contains(pos)
     }
 
     /// Returns the flex factor of the widget.

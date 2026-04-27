@@ -50,9 +50,10 @@ impl<M: 'static> Widget<M> for Flexible<M> {
         text_system: &mut crate::text::TextSystem,
         theme: &crate::theme::Theme,
         focused_id: &mut Option<String>,
+        consumed: &mut bool,
     ) -> Vec<M> {
         self.expanded
-            .on_event(event, rect, text_system, theme, focused_id)
+            .on_event(event, rect, text_system, theme, focused_id, consumed)
     }
 
     fn flex(&self) -> u32 {

@@ -173,6 +173,13 @@ impl ConstraintSet {
         });
         self
     }
+
+    pub fn fill_parent(self) -> Self {
+        self.top_to_top(Target::Parent, 0.0)
+            .bottom_to_bottom(Target::Parent, 0.0)
+            .left_to_left(Target::Parent, 0.0)
+            .right_to_right(Target::Parent, 0.0)
+    }
 }
 
 pub struct ConstraintSolver {

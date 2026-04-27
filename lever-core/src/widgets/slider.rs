@@ -156,6 +156,7 @@ impl<M: 'static> Widget<M> for Slider<M> {
         _text_system: &mut crate::text::TextSystem,
         _theme: &crate::theme::Theme,
         focused_id: &mut Option<String>,
+        _consumed: &mut bool,
     ) -> Vec<M> {
         let mut messages = Vec::new();
         let state = get_or_set_state::<SliderState, _>(&self.id, || SliderState::default());

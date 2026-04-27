@@ -103,37 +103,59 @@ impl<M: 'static> Widget<M> for Scroll<M> {
         text_system: &mut crate::text::TextSystem,
         theme: &crate::theme::Theme,
         focused_id: &mut Option<String>,
+        consumed: &mut bool,
     ) -> Vec<M> {
         let mut messages = Vec::new();
 
-        match event {
-            FrameworkEvent::Scroll { position, delta } => {
-                if rect.contains(*position) {
-                    self.scroll_offset.y += delta.y;
-                    self.scroll_offset.x += delta.x;
-
-                    self.scroll_offset.y = self.scroll_offset.y.max(0.0);
-                    self.scroll_offset.x = self.scroll_offset.x.max(0.0);
-
-                    if let Some(on_scroll) = &self.on_scroll {
-                        messages.push(on_scroll(self.scroll_offset));
-                    }
+        // Handle scroll wheel
+        if let FrameworkEvent::Scroll { position, delta } = event {
+            if rect.contains(*position) {
+                self.scroll_offset.x = (self.scroll_offset.x + delta.x).max(0.0);
+                self.scroll_offset.y = (self.scroll_offset.y + delta.y).max(0.0);
+                if let Some(on_scroll) = &self.on_scroll {
+                    messages.push(on_scroll(self.scroll_offset));
                 }
+                *consumed = true;
+                return messages;
             }
-            _ => {}
         }
 
         let child_rect = Rect {
             x: rect.x - self.scroll_offset.x,
             y: rect.y - self.scroll_offset.y,
             width: rect.width,
-            height: rect.height,
+            height: f32::INFINITY,
         };
 
-        messages.extend(
-            self.child
-                .on_event(event, child_rect, text_system, theme, focused_id),
-        );
+        if let Some(pos) = event.pointer_pos() {
+            if rect.contains(pos) {
+                messages.extend(self.child.on_event(
+                    event,
+                    child_rect,
+                    text_system,
+                    theme,
+                    focused_id,
+                    consumed,
+                ));
+
+                if *consumed {
+                    return messages;
+                }
+            }
+        } else {
+            messages.extend(self.child.on_event(
+                event,
+                child_rect,
+                text_system,
+                theme,
+                focused_id,
+                consumed,
+            ));
+
+            if *consumed {
+                return messages;
+            }
+        }
 
         messages
     }

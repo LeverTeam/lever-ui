@@ -95,12 +95,14 @@ impl<A: App> AppHandler<A> {
             let mut ctx = UpdateContext::new();
             let mut view = self.app.view();
 
+            let mut consumed = false;
             let messages = view.on_event(
                 &event,
                 rect,
                 &mut self.text_system,
                 &self.theme,
                 &mut self.focused_id,
+                &mut consumed,
             );
 
             for msg in messages {

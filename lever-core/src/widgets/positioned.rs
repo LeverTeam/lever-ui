@@ -71,9 +71,10 @@ impl<M: 'static> Widget<M> for Positioned<M> {
         text_system: &mut crate::text::TextSystem,
         theme: &crate::theme::Theme,
         focused_id: &mut Option<String>,
+        consumed: &mut bool,
     ) -> Vec<M> {
         self.child
-            .on_event(event, rect, text_system, theme, focused_id)
+            .on_event(event, rect, text_system, theme, focused_id, consumed)
     }
 
     fn positioned(&self) -> Option<PositionedOffset> {

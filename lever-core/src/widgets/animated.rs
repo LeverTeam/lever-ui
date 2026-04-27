@@ -62,9 +62,10 @@ impl<M: 'static> Widget<M> for AnimatedOpacity<M> {
         text_system: &mut crate::text::TextSystem,
         theme: &crate::theme::Theme,
         focused_id: &mut Option<String>,
+        consumed: &mut bool,
     ) -> Vec<M> {
         self.child
-            .on_event(event, rect, text_system, theme, focused_id)
+            .on_event(event, rect, text_system, theme, focused_id, consumed)
     }
 }
 
@@ -116,11 +117,18 @@ impl<M: 'static> Widget<M> for AnimatedTranslation<M> {
         text_system: &mut crate::text::TextSystem,
         theme: &crate::theme::Theme,
         focused_id: &mut Option<String>,
+        consumed: &mut bool,
     ) -> Vec<M> {
         // Offset the rect so that hit testing works on the visually translated position
         let translated_rect = rect.translate(self.offset);
-        self.child
-            .on_event(event, translated_rect, text_system, theme, focused_id)
+        self.child.on_event(
+            event,
+            translated_rect,
+            text_system,
+            theme,
+            focused_id,
+            consumed,
+        )
     }
 }
 
@@ -176,10 +184,11 @@ impl<M: 'static> Widget<M> for AnimatedScale<M> {
         text_system: &mut crate::text::TextSystem,
         theme: &crate::theme::Theme,
         focused_id: &mut Option<String>,
+        consumed: &mut bool,
     ) -> Vec<M> {
         let scaled_rect = rect.scale_centered(self.scale);
         self.child
-            .on_event(event, scaled_rect, text_system, theme, focused_id)
+            .on_event(event, scaled_rect, text_system, theme, focused_id, consumed)
     }
 }
 
@@ -231,6 +240,7 @@ impl<M: 'static> Widget<M> for AnimatedClip<M> {
         text_system: &mut crate::text::TextSystem,
         theme: &crate::theme::Theme,
         focused_id: &mut Option<String>,
+        consumed: &mut bool,
     ) -> Vec<M> {
         if let Some(pos) = event.pointer_pos() {
             if !self.clip_rect.contains(pos) {
@@ -238,6 +248,6 @@ impl<M: 'static> Widget<M> for AnimatedClip<M> {
             }
         }
         self.child
-            .on_event(event, rect, text_system, theme, focused_id)
+            .on_event(event, rect, text_system, theme, focused_id, consumed)
     }
 }

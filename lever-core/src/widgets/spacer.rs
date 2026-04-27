@@ -85,6 +85,7 @@ impl<M: 'static> Widget<M> for Spacer<M> {
         _text_system: &mut crate::text::TextSystem,
         _theme: &crate::theme::Theme,
         _focused_id: &mut Option<String>,
+        _consumed: &mut bool,
     ) -> Vec<M> {
         Vec::new()
     }
@@ -93,5 +94,3 @@ impl<M: 'static> Widget<M> for Spacer<M> {
         self.flex
     }
 }
-
-

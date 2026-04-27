@@ -11,19 +11,50 @@ pub struct Grid<M> {
     pub row_gap: f32,
 }
 
-impl<M> Grid<M> {
-    pub fn new(columns: Vec<GridTrack>, children: Vec<Box<dyn Widget<M>>>) -> Self {
+impl<M> Default for Grid<M> {
+    fn default() -> Self {
         Self {
-            columns,
+            columns: Vec::new(),
             rows: Vec::new(),
-            children,
+            children: Vec::new(),
             column_gap: 0.0,
             row_gap: 0.0,
         }
     }
+}
 
-    pub fn with_rows(mut self, rows: Vec<GridTrack>) -> Self {
-        self.rows = rows;
+impl<M> Grid<M> {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn with_column(mut self, track: GridTrack) -> Self {
+        self.columns.push(track);
+        self
+    }
+
+    pub fn with_columns(mut self, tracks: Vec<GridTrack>) -> Self {
+        self.columns.extend(tracks);
+        self
+    }
+
+    pub fn with_row(mut self, track: GridTrack) -> Self {
+        self.rows.push(track);
+        self
+    }
+
+    pub fn with_rows(mut self, tracks: Vec<GridTrack>) -> Self {
+        self.rows.extend(tracks);
+        self
+    }
+
+    pub fn with_child(mut self, child: Box<dyn Widget<M>>) -> Self {
+        self.children.push(child);
+        self
+    }
+
+    pub fn with_children(mut self, children: Vec<Box<dyn Widget<M>>>) -> Self {
+        self.children.extend(children);
         self
     }
 
@@ -106,6 +137,7 @@ impl<M: 'static> Widget<M> for Grid<M> {
         text_system: &mut crate::text::TextSystem,
         theme: &crate::theme::Theme,
         focused_id: &mut Option<String>,
+        consumed: &mut bool,
     ) -> Vec<M> {
         let mut messages = Vec::new();
         let solver = GridLayout {
@@ -121,11 +153,21 @@ impl<M: 'static> Widget<M> for Grid<M> {
             theme,
         );
 
-        for (i, child) in self.children.iter_mut().enumerate() {
+        for (i, child) in self.children.iter_mut().enumerate().rev() {
             let mut child_rect = child_rects[i];
             child_rect.x += rect.x;
             child_rect.y += rect.y;
-            messages.extend(child.on_event(event, child_rect, text_system, theme, focused_id));
+            messages.extend(child.on_event(
+                event,
+                child_rect,
+                text_system,
+                theme,
+                focused_id,
+                consumed,
+            ));
+            if *consumed {
+                return messages;
+            }
         }
         messages
     }

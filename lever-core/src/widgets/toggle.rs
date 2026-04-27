@@ -91,11 +91,13 @@ impl<M: 'static> Widget<M> for Toggle<M> {
         _text_system: &mut crate::text::TextSystem,
         _theme: &crate::theme::Theme,
         focused_id: &mut Option<String>,
+        consumed: &mut bool,
     ) -> Vec<M> {
         let mut messages = Vec::new();
         match event {
             FrameworkEvent::PointerDown { position, button } => {
                 if *button == PointerButton::Primary && rect.contains(*position) {
+                    *consumed = true;
                     *focused_id = Some(self.id.clone());
                     self.is_on = !self.is_on;
 

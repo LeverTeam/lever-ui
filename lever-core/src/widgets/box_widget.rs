@@ -221,16 +221,9 @@ impl<M: 'static> Widget<M> for BoxWidget<M> {
         text_system: &mut crate::text::TextSystem,
         theme: &crate::theme::Theme,
         focused_id: &mut Option<String>,
+        consumed: &mut bool,
     ) -> Vec<M> {
         let mut messages = Vec::new();
-
-        if let Some(on_click) = &self.on_click {
-            if let crate::event::FrameworkEvent::PointerUp { position, .. } = event {
-                if rect.contains(*position) {
-                    messages.push(on_click());
-                }
-            }
-        }
 
         if let Some(child) = &mut self.child {
             let content_size = Size {
@@ -254,7 +247,35 @@ impl<M: 'static> Widget<M> for BoxWidget<M> {
                 height: child_res.size.height,
             };
 
-            messages.extend(child.on_event(event, child_rect, text_system, theme, focused_id));
+            messages.extend(child.on_event(
+                event,
+                child_rect,
+                text_system,
+                theme,
+                focused_id,
+                consumed,
+            ));
+
+            if *consumed {
+                return messages;
+            }
+        }
+
+        if let Some(on_click) = &self.on_click {
+            match event {
+                crate::event::FrameworkEvent::PointerDown { position, .. } => {
+                    if rect.contains(*position) {
+                        *consumed = true;
+                    }
+                }
+                crate::event::FrameworkEvent::PointerUp { position, .. } => {
+                    if rect.contains(*position) {
+                        *consumed = true;
+                        messages.push(on_click());
+                    }
+                }
+                _ => {}
+            }
         }
 
         messages

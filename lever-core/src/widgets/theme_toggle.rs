@@ -140,13 +140,14 @@ impl<M: 'static> Widget<M> for ThemeToggle<M> {
         rect: Rect,
         _text_system: &mut crate::text::TextSystem,
         _theme: &crate::theme::Theme,
-        focused_id: &mut Option<String>,
+        _focused_id: &mut Option<String>,
+        consumed: &mut bool,
     ) -> Vec<M> {
         let mut messages = Vec::new();
         match event {
             FrameworkEvent::PointerDown { position, button } => {
                 if *button == PointerButton::Primary && rect.contains(*position) {
-                    *focused_id = Some(self.id.clone());
+                    *consumed = true;
                     let new_mode = match self.current_mode {
                         ThemeMode::Dark => ThemeMode::Light,
                         ThemeMode::Light => ThemeMode::Dark,

@@ -109,7 +109,13 @@ impl<M: 'static> Widget<M> for Button<M> {
             ButtonSize::Large => 48.0,
         };
 
-        let text_layout = text_system.shape(&self.label, font_size, Color::WHITE, None);
+        let text_layout = text_system.shape(
+            &self.label,
+            font_size,
+            Color::WHITE,
+            None,
+            crate::types::TextAlign::Left,
+        );
         let size = constraints.clamp_size(Size {
             width: text_layout.width + h_padding * 2.0,
             height,
@@ -245,7 +251,13 @@ impl<M: 'static> Widget<M> for Button<M> {
             ButtonSize::Medium => 14.0,
             ButtonSize::Large => 16.0,
         };
-        let layout = text_system.shape(&self.label, font_size, animated_text, None);
+        let layout = text_system.shape(
+            &self.label,
+            font_size,
+            animated_text,
+            None,
+            crate::types::TextAlign::Left,
+        );
         let x = rect.x + (rect.width - layout.width) / 2.0;
         let y = rect.y + (rect.height - layout.height) / 2.0;
 
@@ -264,7 +276,8 @@ impl<M: 'static> Widget<M> for Button<M> {
         rect: Rect,
         _text_system: &mut crate::text::TextSystem,
         _theme: &crate::theme::Theme,
-        _focused_id: &mut Option<String>,
+        focused_id: &mut Option<String>,
+        consumed: &mut bool,
     ) -> Vec<M> {
         let mut messages = Vec::new();
         let state = get_or_set_state::<ButtonState, _>(&self.id, || ButtonState::default());
@@ -272,6 +285,8 @@ impl<M: 'static> Widget<M> for Button<M> {
         match event {
             FrameworkEvent::PointerDown { position, button } => {
                 if *button == PointerButton::Primary && rect.contains(*position) {
+                    *consumed = true;
+                    *focused_id = Some(self.id.clone());
                     update_state::<ButtonState, _>(&self.id, |s| s.is_pressed = true);
                 }
             }

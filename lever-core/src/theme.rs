@@ -57,6 +57,12 @@ pub struct Theme {
     pub padding_md: f32,
     /// The color used for box shadows.
     pub shadow_color: Color,
+    /// Small font size token.
+    pub font_size_sm: f32,
+    /// Medium (default) font size token.
+    pub font_size_md: f32,
+    /// Large font size token.
+    pub font_size_lg: f32,
 }
 
 impl Theme {
@@ -89,6 +95,9 @@ impl Theme {
             padding_sm: 8.0,
             padding_md: 16.0,
             shadow_color: Color::rgba(0.0, 0.0, 0.0, 0.5),
+            font_size_sm: 12.0,
+            font_size_md: 14.0,
+            font_size_lg: 18.0,
         }
     }
 
@@ -113,6 +122,9 @@ impl Theme {
             padding_sm: 8.0,
             padding_md: 16.0,
             shadow_color: Color::rgba(0.0, 0.0, 0.0, 0.1),
+            font_size_sm: 12.0,
+            font_size_md: 14.0,
+            font_size_lg: 18.0,
         }
     }
 
@@ -137,6 +149,9 @@ impl Theme {
             padding_sm: a.padding_sm + (b.padding_sm - a.padding_sm) * t,
             padding_md: a.padding_md + (b.padding_md - a.padding_md) * t,
             shadow_color: Color::lerp(a.shadow_color, b.shadow_color, t),
+            font_size_sm: a.font_size_sm + (b.font_size_sm - a.font_size_sm) * t,
+            font_size_md: a.font_size_md + (b.font_size_md - a.font_size_md) * t,
+            font_size_lg: a.font_size_lg + (b.font_size_lg - a.font_size_lg) * t,
         }
     }
 }

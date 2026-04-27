@@ -51,7 +51,13 @@ impl<M: 'static> Widget<M> for RadioButton<M> {
     ) -> LayoutResult {
         let mut width = 24.0;
         if let Some(label) = &self.label {
-            let layout = text_system.shape(label, 14.0, Color::WHITE, None);
+            let layout = text_system.shape(
+                label,
+                14.0,
+                Color::WHITE,
+                None,
+                crate::types::TextAlign::Left,
+            );
             width += 12.0 + layout.width;
         }
 
@@ -118,7 +124,8 @@ impl<M: 'static> Widget<M> for RadioButton<M> {
         }
 
         if let Some(label) = &self.label {
-            let layout = text_system.shape(label, 14.0, theme.text, None);
+            let layout =
+                text_system.shape(label, 14.0, theme.text, None, crate::types::TextAlign::Left);
             draw_list.text(
                 Point {
                     x: (rect.x + 36.0).round(),
@@ -136,6 +143,7 @@ impl<M: 'static> Widget<M> for RadioButton<M> {
         _text_system: &mut crate::text::TextSystem,
         _theme: &crate::theme::Theme,
         _focused_id: &mut Option<String>,
+        _consumed: &mut bool,
     ) -> Vec<M> {
         let mut messages = Vec::new();
         match event {

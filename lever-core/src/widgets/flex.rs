@@ -125,9 +125,6 @@ impl<M: 'static> Widget<M> for Flex<M> {
             child_rect.x += rect.x;
             child_rect.y += rect.y;
 
-            // Visibility culling:
-            // 1. Check against current DrawList clip (handles ScrollWidget viewport)
-            // 2. Check against parent's bounding rect (if finite)
             let is_visible = if let Some(clip) = draw_list.current_clip() {
                 clip.intersects(child_rect)
             } else if rect.width.is_finite() && rect.height.is_finite() {
@@ -156,33 +153,62 @@ impl<M: 'static> Widget<M> for Flex<M> {
         text_system: &mut crate::text::TextSystem,
         theme: &crate::theme::Theme,
         focused_id: &mut Option<String>,
+        consumed: &mut bool,
     ) -> Vec<M> {
-        let mut messages = Vec::new();
         let mut solver = FlexLayout::new(self.direction);
         solver.gap = self.gap;
         solver.main_axis_alignment = self.main_axis_alignment;
         solver.cross_axis_alignment = self.cross_axis_alignment;
-        let (_result, child_rects) = solver.layout(
-            Constraints::tight(rect.width, rect.height),
+
+        let (_, child_rects) = solver.layout(
+            crate::layout::Constraints::loose(rect.width, rect.height),
             &self.children,
             text_system,
             theme,
         );
 
-        for (i, child) in self.children.iter_mut().enumerate() {
-            let mut child_rect = child_rects[i];
-            child_rect.x += rect.x;
-            child_rect.y += rect.y;
+        let mut messages = Vec::new();
+        let current_focused = focused_id.clone();
 
-            // Event culling: only process events if the child is visible
-            let is_visible = if rect.width.is_finite() && rect.height.is_finite() {
-                rect.intersects(child_rect)
-            } else {
-                true
-            };
+        if let Some(fid) = &current_focused {
+            for (child, mut child_rect) in self.children.iter_mut().zip(child_rects.clone()).rev() {
+                if child.id() == Some(fid) {
+                    child_rect.x += rect.x;
+                    child_rect.y += rect.y;
+                    messages.extend(child.on_event(
+                        event,
+                        child_rect,
+                        text_system,
+                        theme,
+                        focused_id,
+                        consumed,
+                    ));
 
-            if is_visible {
-                messages.extend(child.on_event(event, child_rect, text_system, theme, focused_id));
+                    if *consumed {
+                        return messages;
+                    }
+                }
+            }
+        }
+
+        for (child, mut child_rect) in self.children.iter_mut().zip(child_rects).rev() {
+            let is_focused =
+                current_focused.is_some() && child.id().as_deref() == current_focused.as_deref();
+            if !is_focused {
+                child_rect.x += rect.x;
+                child_rect.y += rect.y;
+                messages.extend(child.on_event(
+                    event,
+                    child_rect,
+                    text_system,
+                    theme,
+                    focused_id,
+                    consumed,
+                ));
+
+                if *consumed {
+                    return messages;
+                }
             }
         }
         messages

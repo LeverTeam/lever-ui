@@ -51,7 +51,8 @@ impl<M: 'static> Widget<M> for Dropdown<M> {
     ) -> LayoutResult {
         let mut max_width: f32 = 120.0;
         for item in &self.items {
-            let layout = text_system.shape(item, 14.0, theme.text, None);
+            let layout =
+                text_system.shape(item, 14.0, theme.text, None, crate::types::TextAlign::Left);
             max_width = max_width.max(layout.width + 48.0);
         }
 
@@ -99,7 +100,8 @@ impl<M: 'static> Widget<M> for Dropdown<M> {
             .map(|s| s.as_str())
             .unwrap_or("Select...");
 
-        let layout = text_system.shape(label, 14.0, theme.text, None);
+        let layout =
+            text_system.shape(label, 14.0, theme.text, None, crate::types::TextAlign::Left);
         draw_list.text(
             Point {
                 x: (rect.x + 12.0).round(),
@@ -210,7 +212,8 @@ impl<M: 'static> Widget<M> for Dropdown<M> {
                     });
                 }
 
-                let text_layout = text_system.shape(item, 14.0, theme.text, None);
+                let text_layout =
+                    text_system.shape(item, 14.0, theme.text, None, crate::types::TextAlign::Left);
                 draw_list.push_deferred(DrawCommand::Text {
                     pos: Point {
                         x: (item_rect.x + 8.0).round(),
@@ -232,6 +235,7 @@ impl<M: 'static> Widget<M> for Dropdown<M> {
         _text_system: &mut crate::text::TextSystem,
         _theme: &crate::theme::Theme,
         focused_id: &mut Option<String>,
+        consumed: &mut bool,
     ) -> Vec<M> {
         let mut messages = Vec::new();
         let state = get_or_set_state::<DropdownState, _>(&self.id, || DropdownState::default());
@@ -240,6 +244,7 @@ impl<M: 'static> Widget<M> for Dropdown<M> {
             FrameworkEvent::PointerDown { position, button } => {
                 if *button == PointerButton::Primary {
                     if rect.contains(*position) {
+                        *consumed = true;
                         *focused_id = Some(self.id.clone());
                         let next_open = !state.is_open;
                         update_state::<DropdownState, _>(&self.id, |s| s.is_open = next_open);
@@ -258,6 +263,7 @@ impl<M: 'static> Widget<M> for Dropdown<M> {
                             };
 
                             if item_rect.contains(*position) {
+                                *consumed = true;
                                 if let Some(on_select) = &self.on_select {
                                     messages.push(on_select(i));
                                 }
@@ -266,8 +272,26 @@ impl<M: 'static> Widget<M> for Dropdown<M> {
                             }
                         }
 
-                        // Clicked outside, close menu
-                        update_state::<DropdownState, _>(&self.id, |s| s.is_open = false);
+                        // Clicked outside while open
+                        if state.is_open {
+                            *consumed = true;
+                            update_state::<DropdownState, _>(&self.id, |s| s.is_open = false);
+                        }
+                    }
+                }
+            }
+            FrameworkEvent::PointerMove { position } => {
+                if state.is_open {
+                    let item_height = 36.0;
+                    let menu_height = self.items.len() as f32 * item_height + 8.0;
+                    let menu_rect = Rect {
+                        x: rect.x,
+                        y: rect.y + rect.height + 4.0,
+                        width: rect.width,
+                        height: menu_height,
+                    };
+                    if menu_rect.contains(*position) || rect.contains(*position) {
+                        *consumed = true;
                     }
                 }
             }
