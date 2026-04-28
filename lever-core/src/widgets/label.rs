@@ -62,11 +62,11 @@ impl<M: 'static> Widget<M> for Label<M> {
             font_size,
             color,
             constraints.max_width_opt(),
-            self.align,
+            TextAlign::Left, // Alignment is handled during drawing
         );
         LayoutResult {
             size: constraints.clamp_size(Size {
-                width: layout.width.ceil(),
+                width: layout.width.ceil() + 4.0,
                 height: layout.height.ceil(),
             }),
         }
@@ -84,17 +84,11 @@ impl<M: 'static> Widget<M> for Label<M> {
         let font_size = self.font_size.unwrap_or(theme.font_size_md);
         let color = self.color.unwrap_or(theme.text);
 
-        let layout = text_system.shape(
-            &self.text,
-            font_size,
-            color,
-            Some(rect.width + 1.0),
-            self.align,
-        );
+        let layout = text_system.shape(&self.text, font_size, color, Some(rect.width), self.align);
         draw_list.text(
             crate::types::Point {
                 x: rect.x.round(),
-                y: rect.y.round(),
+                y: (rect.y + (rect.height - layout.height) / 2.0).round(),
             },
             layout.glyphs,
         );

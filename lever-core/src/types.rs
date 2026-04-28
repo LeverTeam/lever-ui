@@ -224,6 +224,8 @@ pub struct PositionedOffset {
     pub bottom: Option<f32>,
     pub left: Option<f32>,
     pub right: Option<f32>,
+    pub width: Option<f32>,
+    pub height: Option<f32>,
 }
 
 impl PositionedOffset {
@@ -232,7 +234,12 @@ impl PositionedOffset {
     }
 
     pub fn is_positioned(&self) -> bool {
-        self.top.is_some() || self.bottom.is_some() || self.left.is_some() || self.right.is_some()
+        self.top.is_some()
+            || self.bottom.is_some()
+            || self.left.is_some()
+            || self.right.is_some()
+            || self.width.is_some()
+            || self.height.is_some()
     }
 }
 

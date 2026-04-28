@@ -37,30 +37,34 @@ impl<M> Stack<M> {
             if let Some(pos) = child.positioned() {
                 let mut x = rect.x;
                 let mut y = rect.y;
-                let mut width = child_size.width;
-                let mut height = child_size.height;
+                let mut width = pos.width.unwrap_or(child_size.width);
+                let mut height = pos.height.unwrap_or(child_size.height);
 
                 if let Some(left) = pos.left {
                     x += left;
                     if let Some(right) = pos.right {
-                        width = (rect.width - left - right).max(0.0);
+                        if pos.width.is_none() {
+                            width = (rect.width - left - right).max(0.0);
+                        }
                     }
                 } else if let Some(right) = pos.right {
-                    x += (rect.width - child_size.width - right).max(0.0);
+                    x += (rect.width - width - right).max(0.0);
                 } else {
-                    let (dx, _) = self.alignment.align(child_size, rect.size());
+                    let (dx, _) = self.alignment.align(Size { width, height }, rect.size());
                     x += dx;
                 }
 
                 if let Some(top) = pos.top {
                     y += top;
                     if let Some(bottom) = pos.bottom {
-                        height = (rect.height - top - bottom).max(0.0);
+                        if pos.height.is_none() {
+                            height = (rect.height - top - bottom).max(0.0);
+                        }
                     }
                 } else if let Some(bottom) = pos.bottom {
-                    y += (rect.height - child_size.height - bottom).max(0.0);
+                    y += (rect.height - height - bottom).max(0.0);
                 } else {
-                    let (_, dy) = self.alignment.align(child_size, rect.size());
+                    let (_, dy) = self.alignment.align(Size { width, height }, rect.size());
                     y += dy;
                 }
 
@@ -83,6 +87,40 @@ impl<M> Stack<M> {
 
         child_rects
     }
+
+    fn constraints_for_child(
+        &self,
+        pos: crate::types::PositionedOffset,
+        parent_size: Size,
+    ) -> Constraints {
+        let mut min_w = 0.0;
+        let mut max_w = parent_size.width;
+        let mut min_h = 0.0;
+        let mut max_h = parent_size.height;
+
+        if let Some(w) = pos.width {
+            min_w = w;
+            max_w = w;
+        } else if let (Some(l), Some(r)) = (pos.left, pos.right) {
+            min_w = (parent_size.width - l - r).max(0.0);
+            max_w = min_w;
+        }
+
+        if let Some(h) = pos.height {
+            min_h = h;
+            max_h = h;
+        } else if let (Some(t), Some(b)) = (pos.top, pos.bottom) {
+            min_h = (parent_size.height - t - b).max(0.0);
+            max_h = min_h;
+        }
+
+        Constraints {
+            min_width: min_w,
+            max_width: max_w,
+            min_height: min_h,
+            max_height: max_h,
+        }
+    }
 }
 
 impl<M: 'static> Widget<M> for Stack<M> {
@@ -102,42 +140,19 @@ impl<M: 'static> Widget<M> for Stack<M> {
 
         for child in &self.children {
             let child_constraints = if let Some(pos) = child.positioned() {
-                let parent_max_w = if constraints.max_width.is_finite() {
-                    constraints.max_width
-                } else {
-                    10000.0
-                };
-                let parent_max_h = if constraints.max_height.is_finite() {
-                    constraints.max_height
-                } else {
-                    10000.0
-                };
-
-                let min_w = if let (Some(l), Some(r)) = (pos.left, pos.right) {
-                    (parent_max_w - l - r).max(0.0)
-                } else {
-                    0.0
-                };
-                let min_h = if let (Some(t), Some(b)) = (pos.top, pos.bottom) {
-                    (parent_max_h - t - b).max(0.0)
-                } else {
-                    0.0
-                };
-
-                Constraints {
-                    min_width: min_w,
-                    max_width: if min_w > 0.0 {
-                        min_w
-                    } else {
+                let parent_size = Size {
+                    width: if constraints.max_width.is_finite() {
                         constraints.max_width
-                    },
-                    min_height: min_h,
-                    max_height: if min_h > 0.0 {
-                        min_h
                     } else {
-                        constraints.max_height
+                        10000.0
                     },
-                }
+                    height: if constraints.max_height.is_finite() {
+                        constraints.max_height
+                    } else {
+                        10000.0
+                    },
+                };
+                self.constraints_for_child(pos, parent_size)
             } else {
                 Constraints::loose(constraints.max_width, constraints.max_height)
             };
@@ -167,22 +182,7 @@ impl<M: 'static> Widget<M> for Stack<M> {
         let mut child_sizes = Vec::with_capacity(self.children.len());
         for child in &self.children {
             let child_constraints = if let Some(pos) = child.positioned() {
-                let min_w = if let (Some(l), Some(r)) = (pos.left, pos.right) {
-                    (rect.width - l - r).max(0.0)
-                } else {
-                    0.0
-                };
-                let min_h = if let (Some(t), Some(b)) = (pos.top, pos.bottom) {
-                    (rect.height - t - b).max(0.0)
-                } else {
-                    0.0
-                };
-                Constraints {
-                    min_width: min_w,
-                    max_width: if min_w > 0.0 { min_w } else { rect.width },
-                    min_height: min_h,
-                    max_height: if min_h > 0.0 { min_h } else { rect.height },
-                }
+                self.constraints_for_child(pos, rect.size())
             } else {
                 Constraints::loose(rect.width, rect.height)
             };
@@ -217,22 +217,7 @@ impl<M: 'static> Widget<M> for Stack<M> {
         let mut child_sizes = Vec::with_capacity(self.children.len());
         for child in &self.children {
             let child_constraints = if let Some(pos) = child.positioned() {
-                let min_w = if let (Some(l), Some(r)) = (pos.left, pos.right) {
-                    (rect.width - l - r).max(0.0)
-                } else {
-                    0.0
-                };
-                let min_h = if let (Some(t), Some(b)) = (pos.top, pos.bottom) {
-                    (rect.height - t - b).max(0.0)
-                } else {
-                    0.0
-                };
-                Constraints {
-                    min_width: min_w,
-                    max_width: if min_w > 0.0 { min_w } else { rect.width },
-                    min_height: min_h,
-                    max_height: if min_h > 0.0 { min_h } else { rect.height },
-                }
+                self.constraints_for_child(pos, rect.size())
             } else {
                 Constraints::loose(rect.width, rect.height)
             };

@@ -4,9 +4,11 @@ use lever_core::types::{Color, ImageFit, Point, SideOffsets, TextureId};
 use lever_core::widget::Widget;
 use lever_core::widgets::{
     child, AnimatedOpacity, AnimatedScale, AnimatedTranslation, BoxWidget, Button, ButtonVariant,
-    Checkbox, ConstraintLayout, Dropdown, Flex, Grid, ImageWidget, Label, Overlay, Scroll, Spacer,
-    ThemeToggle, Toggle, PARENT,
+    Checkbox, ConstraintLayout, Dropdown, Flex, Grid, ImageWidget, Label, Overlay, RadioGroup,
+    RadioOption, Scroll, Slider, Spacer, SpacerOrientation, TabItem, TabStyle, Tabs, ThemeToggle,
+    Toggle, PARENT,
 };
+use lever_core::MainAxisAlignment;
 use lever_windowing::{AppConfig, Application};
 
 #[derive(Debug, Clone)]
@@ -14,6 +16,8 @@ pub enum Message {
     ButtonClicked(String),
     ToggleChanged(bool),
     SliderChanged(f32),
+    DiscreteSliderChanged(f32),
+    PercentSliderChanged(f32),
     CheckboxChanged(bool),
     TextChanged(String, usize),
     ThemeModeChanged(lever_core::theme::ThemeMode),
@@ -21,13 +25,19 @@ pub enum Message {
     ToggleFloat(bool),
     Scrolled(Point),
     DropdownSelected(usize),
+    RadioSelected(usize),
     OpenModal,
     CloseModal,
+    TabChanged(usize),
+    TabPillChanged(usize),
+    TabFullChanged(usize),
 }
 
 pub struct GalleryApp {
     toggle_on: bool,
     slider_value: f32,
+    discrete_slider: f32,
+    percent_slider: f32,
     checkbox_checked: bool,
     input_text: String,
     cursor_index: usize,
@@ -37,8 +47,12 @@ pub struct GalleryApp {
     time: f32,
     scroll_offset: Point,
     selected_dropdown: Option<usize>,
+    selected_radio: usize,
     test_image: Option<TextureId>,
     is_modal_open: bool,
+    active_tab: usize,
+    active_pill_tab: usize,
+    active_full_tab: usize,
 }
 
 impl Default for GalleryApp {
@@ -46,6 +60,8 @@ impl Default for GalleryApp {
         Self {
             toggle_on: true,
             slider_value: 0.5,
+            discrete_slider: 50.0,
+            percent_slider: 0.75,
             checkbox_checked: true,
             input_text: "Hello, Lever!".to_string(),
             cursor_index: 0,
@@ -55,8 +71,12 @@ impl Default for GalleryApp {
             time: 0.0,
             scroll_offset: Point::default(),
             selected_dropdown: Some(0),
+            selected_radio: 0,
             test_image: None,
             is_modal_open: false,
+            active_tab: 0,
+            active_pill_tab: 0,
+            active_full_tab: 0,
         }
     }
 }
@@ -69,7 +89,7 @@ impl App for GalleryApp {
         self.test_image = Some(tex);
     }
 
-    fn update(&mut self, message: Self::Message, _context: &mut UpdateContext) {
+    fn update(&mut self, message: Self::Message, context: &mut UpdateContext) {
         match message {
             Message::TextChanged(text, cursor) => {
                 self.input_text = text;
@@ -84,11 +104,18 @@ impl App for GalleryApp {
             Message::SliderChanged(val) => {
                 self.slider_value = val;
             }
+            Message::DiscreteSliderChanged(val) => {
+                self.discrete_slider = val;
+            }
+            Message::PercentSliderChanged(val) => {
+                self.percent_slider = val;
+            }
             Message::CheckboxChanged(val) => {
                 self.checkbox_checked = val;
             }
             Message::ThemeModeChanged(mode) => {
                 self.theme_mode = mode;
+                context.set_theme(mode);
             }
             Message::TogglePulse(val) => {
                 self.is_pulsing = val;
@@ -102,11 +129,23 @@ impl App for GalleryApp {
             Message::DropdownSelected(idx) => {
                 self.selected_dropdown = Some(idx);
             }
+            Message::RadioSelected(idx) => {
+                self.selected_radio = idx;
+            }
             Message::OpenModal => {
                 self.is_modal_open = true;
             }
             Message::CloseModal => {
                 self.is_modal_open = false;
+            }
+            Message::TabChanged(idx) => {
+                self.active_tab = idx;
+            }
+            Message::TabPillChanged(idx) => {
+                self.active_pill_tab = idx;
+            }
+            Message::TabFullChanged(idx) => {
+                self.active_full_tab = idx;
             }
         }
     }
@@ -310,23 +349,185 @@ impl App for GalleryApp {
                 ),
                 Box::new(Spacer::new().with_size(10.0, 20.0)),
                 Box::new(
-                    Dropdown::new(
-                        "g-drop",
+                    Flex::row(vec![
+                        Box::new(
+                            Dropdown::new(
+                                "g-drop",
+                                vec![
+                                    "Standard Mode".into(),
+                                    "Compact Mode".into(),
+                                    "Experimental".into(),
+                                    "Debug".into(),
+                                ],
+                                self.selected_dropdown,
+                            )
+                            .on_select(|idx| Message::DropdownSelected(idx)),
+                        ),
+                        Box::new(
+                            RadioGroup::new(
+                                "radio-group-demo",
+                                vec![
+                                    RadioOption::new("Option A", 0),
+                                    RadioOption::new("Option B", 1),
+                                    RadioOption::new("Disabled Option", 2).with_disabled(true),
+                                ],
+                            )
+                            .with_selected(self.selected_radio)
+                            .with_direction(lever_core::layout::FlexDirection::Row)
+                            .with_gap(24.0)
+                            .on_changed(|v| Message::RadioSelected(v)),
+                        ),
+                    ])
+                    .with_gap(32.0),
+                ),
+                Box::new(Spacer::new().with_size(10.0, 32.0)),
+                Box::new(Flex::column(vec![
+                    Box::new(Label::new("Sliders").with_size(16.0)),
+                    Box::new(Spacer::new().with_size(10.0, 16.0)),
+                    Box::new(
+                        Flex::row(vec![
+                            Box::new(
+                                Flex::column(vec![
+                                    Box::new(
+                                        Label::new("Continuous (0-1)")
+                                            .with_size(12.0)
+                                            .with_color(theme.text_muted),
+                                    ),
+                                    Box::new(Spacer::new().with_size(10.0, 8.0)),
+                                    Box::new(
+                                        Slider::new("s1", self.slider_value)
+                                            .on_changed(|v| Message::SliderChanged(v)),
+                                    ),
+                                ])
+                                .with_flex(1),
+                            ),
+                            Box::new(
+                                Flex::column(vec![
+                                    Box::new(
+                                        Label::new("Discrete (0-100, step 10)")
+                                            .with_size(12.0)
+                                            .with_color(theme.text_muted),
+                                    ),
+                                    Box::new(Spacer::new().with_size(10.0, 8.0)),
+                                    Box::new(
+                                        Slider::new("s2", self.discrete_slider)
+                                            .with_range(0.0, 100.0)
+                                            .with_step(10.0)
+                                            .on_changed(|v| Message::DiscreteSliderChanged(v)),
+                                    ),
+                                ])
+                                .with_flex(1),
+                            ),
+                        ])
+                        .with_gap(24.0),
+                    ),
+                    Box::new(Spacer::new().with_size(10.0, 24.0)),
+                    Box::new(
+                        Flex::row(vec![
+                            Box::new(
+                                Flex::column(vec![
+                                    Box::new(
+                                        Label::new("Percent Formatter")
+                                            .with_size(12.0)
+                                            .with_color(theme.text_muted),
+                                    ),
+                                    Box::new(Spacer::new().with_size(10.0, 8.0)),
+                                    Box::new(
+                                        Slider::new("s3", self.percent_slider)
+                                            .with_label_formatter(|v| format!("{:.0}%", v * 100.0))
+                                            .on_changed(|v| Message::PercentSliderChanged(v)),
+                                    ),
+                                ])
+                                .with_flex(1),
+                            ),
+                            Box::new(
+                                Flex::column(vec![
+                                    Box::new(
+                                        Label::new("Disabled State")
+                                            .with_size(12.0)
+                                            .with_color(theme.text_muted),
+                                    ),
+                                    Box::new(Spacer::new().with_size(10.0, 8.0)),
+                                    Box::new(Slider::new("s4", 0.3).with_disabled(true)),
+                                ])
+                                .with_flex(1),
+                            ),
+                        ])
+                        .with_gap(24.0),
+                    ),
+                ])),
+            ])),
+            0,
+        );
+        let test_tex = self.test_image.unwrap_or(TextureId(0));
+
+        let navigation_section = section_card(
+            "Navigation & Tabs",
+            "Modern, animated tab systems for switching views.",
+            Box::new(Flex::column(vec![
+                Box::new(
+                    Label::new("Underline Style (Default)")
+                        .with_size(12.0)
+                        .with_color(theme.text_muted),
+                ),
+                Box::new(Spacer::new().with_size(10.0, 8.0)),
+                Box::new(
+                    Tabs::new(
+                        "tabs-underline",
                         vec![
-                            "Standard Mode".into(),
-                            "Compact Mode".into(),
-                            "Experimental".into(),
-                            "Debug".into(),
+                            TabItem::new("Account"),
+                            TabItem::new("Security"),
+                            TabItem::new("Notifications"),
+                            TabItem::new("Advanced").with_disabled(true),
                         ],
-                        self.selected_dropdown,
+                        self.active_tab,
                     )
-                    .on_select(|idx| Message::DropdownSelected(idx)),
+                    .on_change(|idx| Message::TabChanged(idx)),
+                ),
+                Box::new(Spacer::new().with_size(10.0, 32.0)),
+                Box::new(
+                    Label::new("Pill Style with Icons")
+                        .with_size(12.0)
+                        .with_color(theme.text_muted),
+                ),
+                Box::new(Spacer::new().with_size(10.0, 8.0)),
+                Box::new(
+                    Tabs::new(
+                        "tabs-pill",
+                        vec![
+                            TabItem::new("Home").with_icon(test_tex),
+                            TabItem::new("Search").with_icon(test_tex),
+                            TabItem::new("Library").with_icon(test_tex),
+                        ],
+                        self.active_pill_tab,
+                    )
+                    .with_style(TabStyle::Pill)
+                    .on_change(|idx| Message::TabPillChanged(idx)),
+                ),
+                Box::new(Spacer::new().with_size(10.0, 32.0)),
+                Box::new(
+                    Label::new("Full Width (Distributed)")
+                        .with_size(12.0)
+                        .with_color(theme.text_muted),
+                ),
+                Box::new(Spacer::new().with_size(10.0, 8.0)),
+                Box::new(
+                    Tabs::new(
+                        "tabs-full",
+                        vec![
+                            TabItem::new("Left"),
+                            TabItem::new("Middle"),
+                            TabItem::new("Right"),
+                        ],
+                        self.active_full_tab,
+                    )
+                    .with_full_width(true)
+                    .with_alignment(MainAxisAlignment::SpaceEvenly)
+                    .on_change(|idx| Message::TabFullChanged(idx)),
                 ),
             ])),
             0,
         );
-
-        let test_tex = self.test_image.unwrap_or(TextureId(0));
 
         let image_section = section_card(
             "Images & Media",
@@ -494,6 +695,69 @@ impl App for GalleryApp {
             .with_gap(24.0),
         );
 
+        let spacing_section = section_card(
+            "Spacing & Dividers",
+            "Helpers for layout separation and visual structure.",
+            Box::new(Flex::column(vec![
+                Box::new(
+                    Flex::row(vec![
+                        Box::new(Label::new("Item 1")),
+                        Box::new(
+                            Spacer::horizontal(32.0)
+                                .with_divider(theme.border)
+                                .with_orientation(SpacerOrientation::Vertical),
+                        ),
+                        Box::new(Label::new("Item 2")),
+                        Box::new(
+                            Spacer::horizontal(32.0)
+                                .with_divider(theme.primary)
+                                .with_thickness(2.0)
+                                .with_orientation(SpacerOrientation::Vertical),
+                        ),
+                        Box::new(Label::new("Item 3")),
+                    ])
+                    .with_cross_axis_alignment(lever_core::layout::CrossAxisAlignment::Stretch)
+                    .with_gap(12.0),
+                ),
+                Box::new(Spacer::vertical(24.0)),
+                Box::new(Flex::row(vec![
+                    Box::new(Label::new("Pushed to Left")),
+                    Box::new(Spacer::flex()),
+                    Box::new(Label::new("Pushed to Right")),
+                ])),
+                Box::new(
+                    Spacer::vertical(32.0)
+                        .with_divider(theme.border)
+                        .with_orientation(SpacerOrientation::Horizontal),
+                ),
+                Box::new(
+                    Flex::row(vec![
+                        Box::new(
+                            BoxWidget::new(theme.surface_variant)
+                                .with_size(100.0, 100.0)
+                                .with_radius(8.0)
+                                .with_child(Box::new(Label::new("A").with_size(24.0))),
+                        ),
+                        Box::new(
+                            Spacer::horizontal(32.0)
+                                .with_divider(theme.success)
+                                .with_thickness(4.0)
+                                .with_orientation(SpacerOrientation::Vertical),
+                        ),
+                        Box::new(
+                            BoxWidget::new(theme.surface_variant)
+                                .with_size(100.0, 100.0)
+                                .with_radius(8.0)
+                                .with_child(Box::new(Label::new("B").with_size(24.0))),
+                        ),
+                    ])
+                    .with_cross_axis_alignment(lever_core::layout::CrossAxisAlignment::Stretch)
+                    .with_gap(24.0),
+                ),
+            ])),
+            0,
+        );
+
         let typography_section = section_card(
             "Typography & Alignment",
             "Consistent sizing and flexible horizontal alignment.",
@@ -542,38 +806,40 @@ impl App for GalleryApp {
             Box::new(Spacer::new().with_size(10.0, 48.0)),
             typography_section,
             Box::new(Spacer::new().with_size(10.0, 24.0)),
+            spacing_section,
+            Box::new(Spacer::new().with_size(10.0, 24.0)),
             animation_section,
             Box::new(Spacer::new().with_size(10.0, 24.0)),
             image_section,
             Box::new(Spacer::new().with_size(10.0, 24.0)),
             interactive_section,
-            Box::new(Spacer::new().with_size(10.0, 24.0)),
+            Box::new(Spacer::new().with_size(10.0, 40.0)),
+            navigation_section,
+            Box::new(Spacer::new().with_size(10.0, 40.0)),
             layout_section,
             Box::new(Spacer::new().with_size(10.0, 100.0)),
         ])
         .with_gap(24.0)
         .with_cross_axis_alignment(lever_core::layout::CrossAxisAlignment::Stretch);
 
-        let scroll = Scroll::new(Box::new(
-            BoxWidget::new(Color::TRANSPARENT)
-                .with_padding(
-                    SideOffsets::default()
-                        .with_horizontal(40.0)
-                        .with_vertical(60.0),
-                )
-                .with_size(1000.0, 0.0)
-                .with_child(Box::new(content)),
-        ))
+        let scroll = Scroll::new(
+            "main-scroll",
+            Box::new(
+                BoxWidget::new(Color::TRANSPARENT)
+                    .with_padding(
+                        SideOffsets::default()
+                            .with_horizontal(40.0)
+                            .with_vertical(60.0),
+                    )
+                    .with_child(Box::new(content)),
+            ),
+        )
         .with_flex(1)
         .on_scroll(|offset| Message::Scrolled(offset))
         .with_offset(self.scroll_offset);
 
         let root = ConstraintLayout::new().with_id("root").with_child(
-            Box::new(
-                BoxWidget::new(theme.background)
-                    .with_size(1000.0, 850.0)
-                    .with_child(Box::new(scroll)),
-            ),
+            Box::new(BoxWidget::new(theme.background).with_child(Box::new(scroll))),
             |set| set.fill_parent(),
         );
 

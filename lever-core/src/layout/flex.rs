@@ -67,12 +67,33 @@ impl FlexLayout {
             if flex > 0 {
                 total_flex += flex;
             } else {
-                let res = child.layout(
-                    Constraints::loose(constraints.max_width, constraints.max_height),
-                    &[],
-                    text_system,
-                    theme,
-                );
+                let child_constraints = match self.direction {
+                    FlexDirection::Row => Constraints {
+                        min_width: 0.0,
+                        max_width: f32::INFINITY,
+                        min_height: if self.cross_axis_alignment == CrossAxisAlignment::Stretch
+                            && constraints.max_height.is_finite()
+                        {
+                            constraints.max_height
+                        } else {
+                            0.0
+                        },
+                        max_height: constraints.max_height,
+                    },
+                    FlexDirection::Column => Constraints {
+                        min_width: if self.cross_axis_alignment == CrossAxisAlignment::Stretch
+                            && constraints.max_width.is_finite()
+                        {
+                            constraints.max_width
+                        } else {
+                            0.0
+                        },
+                        max_width: constraints.max_width,
+                        min_height: 0.0,
+                        max_height: f32::INFINITY,
+                    },
+                };
+                let res = child.layout(child_constraints, &[], text_system, theme);
                 child_results[i] = res;
                 match self.direction {
                     FlexDirection::Row => {
@@ -108,11 +129,25 @@ impl FlexLayout {
                             FlexDirection::Row => Constraints {
                                 min_width: child_main,
                                 max_width: child_main,
-                                min_height: 0.0,
+                                min_height: if self.cross_axis_alignment
+                                    == CrossAxisAlignment::Stretch
+                                    && constraints.max_height.is_finite()
+                                {
+                                    constraints.max_height
+                                } else {
+                                    0.0
+                                },
                                 max_height: constraints.max_height,
                             },
                             FlexDirection::Column => Constraints {
-                                min_width: 0.0,
+                                min_width: if self.cross_axis_alignment
+                                    == CrossAxisAlignment::Stretch
+                                    && constraints.max_width.is_finite()
+                                {
+                                    constraints.max_width
+                                } else {
+                                    0.0
+                                },
                                 max_width: constraints.max_width,
                                 min_height: child_main,
                                 max_height: child_main,

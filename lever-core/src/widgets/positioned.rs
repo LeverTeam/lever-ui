@@ -38,6 +38,24 @@ impl<M> Positioned<M> {
         self.offset.right = Some(value);
         self
     }
+
+    pub fn width(mut self, value: f32) -> Self {
+        self.offset.width = Some(value);
+        self
+    }
+
+    pub fn height(mut self, value: f32) -> Self {
+        self.offset.height = Some(value);
+        self
+    }
+
+    pub fn fill(mut self) -> Self {
+        self.offset.top = Some(0.0);
+        self.offset.bottom = Some(0.0);
+        self.offset.left = Some(0.0);
+        self.offset.right = Some(0.0);
+        self
+    }
 }
 
 impl<M: 'static> Widget<M> for Positioned<M> {
