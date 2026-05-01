@@ -1,25 +1,29 @@
 use crate::draw::DrawList;
+use crate::event::FrameworkEvent;
 use crate::layout::{Alignment, Constraints, LayoutNode, LayoutResult};
 use crate::types::{Rect, Size};
 use crate::widget::Widget;
 
 pub struct Stack<M> {
-    pub id: Option<String>,
     pub children: Vec<Box<dyn Widget<M>>>,
     pub alignment: Alignment,
 }
 
 impl<M> Stack<M> {
-    pub fn new(children: Vec<Box<dyn Widget<M>>>) -> Self {
+    pub fn new() -> Self {
         Self {
-            id: None,
-            children,
-            alignment: Alignment::default(),
+            children: Vec::new(),
+            alignment: Alignment::TopLeft,
         }
     }
 
-    pub fn with_id(mut self, id: impl Into<String>) -> Self {
-        self.id = Some(id.into());
+    pub fn with_child(mut self, child: Box<dyn Widget<M>>) -> Self {
+        self.children.push(child);
+        self
+    }
+
+    pub fn with_children(mut self, children: Vec<Box<dyn Widget<M>>>) -> Self {
+        self.children.extend(children);
         self
     }
 
@@ -27,107 +31,9 @@ impl<M> Stack<M> {
         self.alignment = alignment;
         self
     }
-
-    fn calculate_child_rects(&self, rect: Rect, child_sizes: &[Size]) -> Vec<Rect> {
-        let mut child_rects = Vec::with_capacity(self.children.len());
-
-        for (i, child) in self.children.iter().enumerate() {
-            let child_size = child_sizes[i];
-
-            if let Some(pos) = child.positioned() {
-                let mut x = rect.x;
-                let mut y = rect.y;
-                let mut width = pos.width.unwrap_or(child_size.width);
-                let mut height = pos.height.unwrap_or(child_size.height);
-
-                if let Some(left) = pos.left {
-                    x += left;
-                    if let Some(right) = pos.right {
-                        if pos.width.is_none() {
-                            width = (rect.width - left - right).max(0.0);
-                        }
-                    }
-                } else if let Some(right) = pos.right {
-                    x += (rect.width - width - right).max(0.0);
-                } else {
-                    let (dx, _) = self.alignment.align(Size { width, height }, rect.size());
-                    x += dx;
-                }
-
-                if let Some(top) = pos.top {
-                    y += top;
-                    if let Some(bottom) = pos.bottom {
-                        if pos.height.is_none() {
-                            height = (rect.height - top - bottom).max(0.0);
-                        }
-                    }
-                } else if let Some(bottom) = pos.bottom {
-                    y += (rect.height - height - bottom).max(0.0);
-                } else {
-                    let (_, dy) = self.alignment.align(Size { width, height }, rect.size());
-                    y += dy;
-                }
-
-                child_rects.push(Rect {
-                    x,
-                    y,
-                    width,
-                    height,
-                });
-            } else {
-                let (dx, dy) = self.alignment.align(child_size, rect.size());
-                child_rects.push(Rect {
-                    x: rect.x + dx,
-                    y: rect.y + dy,
-                    width: child_size.width,
-                    height: child_size.height,
-                });
-            }
-        }
-
-        child_rects
-    }
-
-    fn constraints_for_child(
-        &self,
-        pos: crate::types::PositionedOffset,
-        parent_size: Size,
-    ) -> Constraints {
-        let mut min_w = 0.0;
-        let mut max_w = parent_size.width;
-        let mut min_h = 0.0;
-        let mut max_h = parent_size.height;
-
-        if let Some(w) = pos.width {
-            min_w = w;
-            max_w = w;
-        } else if let (Some(l), Some(r)) = (pos.left, pos.right) {
-            min_w = (parent_size.width - l - r).max(0.0);
-            max_w = min_w;
-        }
-
-        if let Some(h) = pos.height {
-            min_h = h;
-            max_h = h;
-        } else if let (Some(t), Some(b)) = (pos.top, pos.bottom) {
-            min_h = (parent_size.height - t - b).max(0.0);
-            max_h = min_h;
-        }
-
-        Constraints {
-            min_width: min_w,
-            max_width: max_w,
-            min_height: min_h,
-            max_height: max_h,
-        }
-    }
 }
 
 impl<M: 'static> Widget<M> for Stack<M> {
-    fn id(&self) -> Option<&str> {
-        self.id.as_deref()
-    }
-
     fn layout(
         &self,
         constraints: Constraints,
@@ -135,38 +41,25 @@ impl<M: 'static> Widget<M> for Stack<M> {
         text_system: &mut crate::text::TextSystem,
         theme: &crate::theme::Theme,
     ) -> LayoutResult {
-        let mut max_width: f32 = 0.0;
-        let mut max_height: f32 = 0.0;
+        let mut max_width = 0.0f32;
+        let mut max_height = 0.0f32;
 
         for child in &self.children {
-            let child_constraints = if let Some(pos) = child.positioned() {
-                let parent_size = Size {
-                    width: if constraints.max_width.is_finite() {
-                        constraints.max_width
-                    } else {
-                        10000.0
-                    },
-                    height: if constraints.max_height.is_finite() {
-                        constraints.max_height
-                    } else {
-                        10000.0
-                    },
-                };
-                self.constraints_for_child(pos, parent_size)
-            } else {
-                Constraints::loose(constraints.max_width, constraints.max_height)
-            };
-
-            let res = child.layout(child_constraints, &[], text_system, theme);
+            let res = child.layout(
+                Constraints::loose(constraints.max_width, constraints.max_height),
+                &[],
+                text_system,
+                theme,
+            );
             max_width = max_width.max(res.size.width);
             max_height = max_height.max(res.size.height);
         }
 
         LayoutResult {
-            size: constraints.clamp_size(Size {
-                width: max_width,
-                height: max_height,
-            }),
+            size: Size {
+                width: max_width.clamp(constraints.min_width, constraints.max_width),
+                height: max_height.clamp(constraints.min_height, constraints.max_height),
+            },
         }
     }
 
@@ -179,23 +72,24 @@ impl<M: 'static> Widget<M> for Stack<M> {
         focused_id: Option<&str>,
         pointer_pos: Option<crate::types::Point>,
     ) {
-        let mut child_sizes = Vec::with_capacity(self.children.len());
         for child in &self.children {
-            let child_constraints = if let Some(pos) = child.positioned() {
-                self.constraints_for_child(pos, rect.size())
-            } else {
-                Constraints::loose(rect.width, rect.height)
+            let res = child.layout(
+                Constraints::loose(rect.width, rect.height),
+                &[],
+                text_system,
+                theme,
+            );
+
+            let (dx, dy) = self.alignment.align(res.size, rect.size());
+            let child_rect = Rect {
+                x: rect.x + dx,
+                y: rect.y + dy,
+                width: res.size.width,
+                height: res.size.height,
             };
 
-            let res = child.layout(child_constraints, &[], text_system, theme);
-            child_sizes.push(res.size);
-        }
-
-        let child_rects = self.calculate_child_rects(rect, &child_sizes);
-
-        for (i, child) in self.children.iter().enumerate() {
             child.draw(
-                child_rects[i],
+                child_rect,
                 draw_list,
                 text_system,
                 theme,
@@ -207,63 +101,42 @@ impl<M: 'static> Widget<M> for Stack<M> {
 
     fn on_event(
         &mut self,
-        event: &crate::event::FrameworkEvent,
+        event: &FrameworkEvent,
         rect: Rect,
         text_system: &mut crate::text::TextSystem,
         theme: &crate::theme::Theme,
         focused_id: &mut Option<String>,
         consumed: &mut bool,
     ) -> Vec<M> {
-        let mut child_sizes = Vec::with_capacity(self.children.len());
-        for child in &self.children {
-            let child_constraints = if let Some(pos) = child.positioned() {
-                self.constraints_for_child(pos, rect.size())
-            } else {
-                Constraints::loose(rect.width, rect.height)
+        let mut messages = Vec::new();
+
+        for child in self.children.iter_mut().rev() {
+            let res = child.layout(
+                Constraints::loose(rect.width, rect.height),
+                &[],
+                text_system,
+                theme,
+            );
+
+            let (dx, dy) = self.alignment.align(res.size, rect.size());
+            let child_rect = Rect {
+                x: rect.x + dx,
+                y: rect.y + dy,
+                width: res.size.width,
+                height: res.size.height,
             };
 
-            let res = child.layout(child_constraints, &[], text_system, theme);
-            child_sizes.push(res.size);
-        }
+            messages.extend(child.on_event(
+                event,
+                child_rect,
+                text_system,
+                theme,
+                focused_id,
+                consumed,
+            ));
 
-        let child_rects = self.calculate_child_rects(rect, &child_sizes);
-
-        let mut messages = Vec::new();
-        let current_focused = focused_id.clone();
-
-        if let Some(fid) = &current_focused {
-            for (i, child) in self.children.iter_mut().enumerate().rev() {
-                if child.id() == Some(fid) {
-                    messages.extend(child.on_event(
-                        event,
-                        child_rects[i],
-                        text_system,
-                        theme,
-                        focused_id,
-                        consumed,
-                    ));
-                    if *consumed {
-                        return messages;
-                    }
-                }
-            }
-        }
-
-        for (i, child) in self.children.iter_mut().enumerate().rev() {
-            let is_focused =
-                current_focused.is_some() && child.id().as_deref() == current_focused.as_deref();
-            if !is_focused {
-                messages.extend(child.on_event(
-                    event,
-                    child_rects[i],
-                    text_system,
-                    theme,
-                    focused_id,
-                    consumed,
-                ));
-                if *consumed {
-                    return messages;
-                }
+            if *consumed {
+                break;
             }
         }
 

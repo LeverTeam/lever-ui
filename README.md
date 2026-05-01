@@ -1,8 +1,9 @@
 # Lever UI
 
+![Version](https://img.shields.io/badge/version-0.1.0-blue?style=flat-square)
 ![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)
 
-A cross-platform GPU-accelerated UI framework for Rust with a message-driven architecture. Lever uses Signed Distance Fields (SDF) for high-performance rendering of pixel-perfect rounded shapes, dynamic gradients, and drop shadows.
+Lever is a cross-platform, GPU-accelerated UI framework for Rust featuring a message-driven architecture. It utilizes Signed Distance Fields (SDF) to render pixel-perfect rounded shapes, dynamic gradients, and smooth drop shadows with high performance.
 
 ## Stack
 
@@ -17,43 +18,49 @@ cargo build
 
 ## Usage / Examples
 
-### gallery.rs
+### Core Widget Implementation
 
-A showcase of core widgets including Flex layouts, TextInput, Buttons, Toggles, and Sliders.
+Lever uses a declarative `view` function to construct UIs from composable widgets.
 
 ```rust
-impl App for GalleryApp {
+impl App for MyApp {
     type Message = Message;
 
-    fn update(&mut self, message: Self::Message) {
+    fn update(&mut self, message: Message, context: &mut UpdateContext) {
         match message {
-            Message::TextChanged(new_text, new_cursor) => {
-                self.input_text = new_text;
-                self.cursor_index = new_cursor;
-            }
-            Message::ButtonClicked(name) => println!("Clicked: {}", name),
-            // ...
+            Message::TogglePulse(val) => self.is_pulsing = val,
+            Message::SliderChanged(val) => self.slider_value = val,
         }
     }
 
     fn view(&self) -> Box<dyn Widget<Self::Message>> {
-        Box::new(Center::new(Box::new(
-            BoxWidget::new(Color::rgb(0.1, 0.1, 0.1))
-                .with_padding(SideOffsets::all(40.0))
-                .with_child(Box::new(
-                    Flex::column(vec![
-                        Box::new(Label::new("Lever UI Gallery", 32.0, Color::rgb(1.0, 1.0, 1.0))),
-                        Box::new(TextInput::new("input")
-                            .with_text(&self.input_text)
-                            .on_input(|t, c| Message::TextChanged(t, c))),
-                        Box::new(Flex::row(vec![
-                            Box::new(Button::new("Primary").with_color(Color::rgb(0.2, 0.4, 0.8))),
-                            Box::new(Toggle::new("toggle", true)),
-                        ])),
-                        Box::new(Slider::new("slider", 0.5)),
-                    ])
-                ))
-        )))
+        Box::new(Flex::column(vec![
+            Box::new(Label::new("Lever UI").with_size(32.0)),
+            Box::new(
+                Flex::row(vec![
+                    Box::new(Button::new("btn", "Action").with_variant(ButtonVariant::Primary)),
+                    Box::new(Toggle::new("toggle", self.is_pulsing).on_changed(Message::TogglePulse)),
+                ])
+                .with_gap(12.0),
+            ),
+            Box::new(ProgressBar::new("progress", self.slider_value)),
+            Box::new(
+                Wrap::new()
+                    .with_spacing(8.0)
+                    .with_children(vec![
+                        Box::new(Label::new("Tag 1")),
+                        Box::new(Label::new("Tag 2")),
+                    ]),
+            ),
+        ]))
     }
 }
+```
+
+### Running the Gallery
+
+The modular gallery demonstrates all available components including Animations, Progress Indicators, and Advanced Layouts (Stack/Wrap).
+
+```powershell
+cargo run --example gallery
 ```

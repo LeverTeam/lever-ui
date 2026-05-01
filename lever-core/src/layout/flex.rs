@@ -117,6 +117,7 @@ impl FlexLayout {
                 FlexDirection::Row => constraints.max_width,
                 FlexDirection::Column => constraints.max_height,
             };
+
             if available_main.is_finite() {
                 let remaining_main = (available_main - used_main).max(0.0);
                 let main_per_flex = remaining_main / total_flex as f32;
@@ -158,6 +159,52 @@ impl FlexLayout {
                         match self.direction {
                             FlexDirection::Row => max_cross = max_cross.max(res.size.height),
                             FlexDirection::Column => max_cross = max_cross.max(res.size.width),
+                        }
+                    }
+                }
+            } else {
+                for (i, child) in children.iter().enumerate() {
+                    let flex = child.flex();
+                    if flex > 0 {
+                        let child_constraints = match self.direction {
+                            FlexDirection::Row => Constraints {
+                                min_width: 0.0,
+                                max_width: f32::INFINITY,
+                                min_height: if self.cross_axis_alignment
+                                    == CrossAxisAlignment::Stretch
+                                    && constraints.max_height.is_finite()
+                                {
+                                    constraints.max_height
+                                } else {
+                                    0.0
+                                },
+                                max_height: constraints.max_height,
+                            },
+                            FlexDirection::Column => Constraints {
+                                min_width: if self.cross_axis_alignment
+                                    == CrossAxisAlignment::Stretch
+                                    && constraints.max_width.is_finite()
+                                {
+                                    constraints.max_width
+                                } else {
+                                    0.0
+                                },
+                                max_width: constraints.max_width,
+                                min_height: 0.0,
+                                max_height: f32::INFINITY,
+                            },
+                        };
+                        let res = child.layout(child_constraints, &[], text_system, theme);
+                        child_results[i] = res;
+                        match self.direction {
+                            FlexDirection::Row => {
+                                used_main += res.size.width;
+                                max_cross = max_cross.max(res.size.height);
+                            }
+                            FlexDirection::Column => {
+                                used_main += res.size.height;
+                                max_cross = max_cross.max(res.size.width);
+                            }
                         }
                     }
                 }

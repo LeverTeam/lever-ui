@@ -27,6 +27,8 @@ pub struct Scroll<M> {
     pub scroll_offset: Point,
     pub on_scroll: Option<Box<dyn Fn(Point) -> M>>,
     pub flex: u32,
+    pub show_vertical: bool,
+    pub show_horizontal: bool,
 }
 
 impl<M> Scroll<M> {
@@ -37,7 +39,19 @@ impl<M> Scroll<M> {
             scroll_offset: Point { x: 0.0, y: 0.0 },
             on_scroll: None,
             flex: 0,
+            show_vertical: true,
+            show_horizontal: false,
         }
+    }
+
+    pub fn with_vertical(mut self, show: bool) -> Self {
+        self.show_vertical = show;
+        self
+    }
+
+    pub fn with_horizontal(mut self, show: bool) -> Self {
+        self.show_horizontal = show;
+        self
     }
 
     pub fn with_offset(mut self, offset: Point) -> Self {
@@ -205,6 +219,26 @@ impl<M: 'static> Widget<M> for Scroll<M> {
             }
         }
 
+        let child_rect = Rect {
+            x: rect.x - self.scroll_offset.x,
+            y: rect.y - self.scroll_offset.y,
+            width: content_size.width,
+            height: content_size.height,
+        };
+
+        messages.extend(self.child.on_event(
+            event,
+            child_rect,
+            text_system,
+            theme,
+            focused_id,
+            consumed,
+        ));
+
+        if *consumed {
+            return messages;
+        }
+
         if let FrameworkEvent::Scroll { position, delta } = event {
             if rect.contains(*position) {
                 let (max_scroll_x, max_scroll_y) =
@@ -266,22 +300,6 @@ impl<M: 'static> Widget<M> for Scroll<M> {
                 }
             }
         }
-
-        let child_rect = Rect {
-            x: rect.x - self.scroll_offset.x,
-            y: rect.y - self.scroll_offset.y,
-            width: rect.width,
-            height: f32::INFINITY,
-        };
-
-        messages.extend(self.child.on_event(
-            event,
-            child_rect,
-            text_system,
-            theme,
-            focused_id,
-            consumed,
-        ));
 
         messages
     }
