@@ -45,18 +45,24 @@ pub fn view(app: &GalleryApp, theme: &Theme) -> Box<dyn Widget<Message>> {
     section_card(
         "Data & Tables",
         "Virtualized data grid handling 10,000 rows with sticky headers.",
-        Box::new(
+        Box::new(lever_core::widgets::Expanded::new(Box::new(
             BoxWidget::new(surface_color)
                 .with_radius(8.0)
-                .with_size(0.0, 500.0)
                 .with_child(Box::new(
                     DataGrid::new("demo-grid", users)
                         .with_column(DataGridColumn::new("ID", 80.0, move |u: &MockUser, _| {
                             Box::new(Label::new(format!("#{}", u.id)).with_color(text_muted))
                         }))
-                        .with_column(DataGridColumn::new("Name", 180.0, |u: &MockUser, _| {
+                        .with_column(DataGridColumn::new("Name", 150.0, |u: &MockUser, _| {
                             Box::new(Label::new(&u.name))
                         }))
+                        .with_column(DataGridColumn::new(
+                            "Email",
+                            220.0,
+                            move |u: &MockUser, _| {
+                                Box::new(Label::new(&u.email).with_color(text_muted))
+                            },
+                        ))
                         .with_column(DataGridColumn::new(
                             "Status",
                             120.0,
@@ -112,7 +118,7 @@ pub fn view(app: &GalleryApp, theme: &Theme) -> Box<dyn Widget<Message>> {
                         .with_offset(app.grid_offset)
                         .on_scroll(|offset| Message::GridScrolled(offset)),
                 )),
-        ),
+        ))),
         0,
         theme,
     )

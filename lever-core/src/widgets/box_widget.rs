@@ -128,7 +128,11 @@ impl<M: 'static> Widget<M> for BoxWidget<M> {
         theme: &crate::theme::Theme,
     ) -> LayoutResult {
         let mut size = Size {
-            width: self.width.unwrap_or(0.0),
+            width: self.width.unwrap_or(if constraints.max_width.is_finite() {
+                constraints.max_width
+            } else {
+                0.0
+            }),
             height: self.height.unwrap_or(0.0),
         };
 

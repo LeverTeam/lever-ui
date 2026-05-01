@@ -30,6 +30,7 @@ pub enum Message {
     TabChanged(usize),
     TabPillChanged(usize),
     TabFullChanged(usize),
+    ToggleSidebar(bool),
 }
 
 pub struct GalleryApp {
@@ -59,6 +60,7 @@ pub struct GalleryApp {
     pub active_tab: usize,
     pub active_pill_tab: usize,
     pub active_full_tab: usize,
+    pub is_sidebar_collapsed: bool,
 }
 
 impl Default for GalleryApp {
@@ -90,6 +92,7 @@ impl Default for GalleryApp {
             active_tab: 0,
             active_pill_tab: 0,
             active_full_tab: 0,
+            is_sidebar_collapsed: false,
         }
     }
 }
@@ -174,6 +177,9 @@ impl App for GalleryApp {
             }
             Message::TabFullChanged(idx) => {
                 self.active_full_tab = idx;
+            }
+            Message::ToggleSidebar(val) => {
+                self.is_sidebar_collapsed = val;
             }
         }
     }
