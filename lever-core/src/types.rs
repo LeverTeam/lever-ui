@@ -108,6 +108,13 @@ impl Rect {
             height: new_h,
         }
     }
+
+    pub fn center(&self) -> Point {
+        Point {
+            x: self.x + self.width / 2.0,
+            y: self.y + self.height / 2.0,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Default)]

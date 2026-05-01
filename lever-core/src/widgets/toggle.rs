@@ -63,11 +63,9 @@ impl<M: 'static> Widget<M> for Toggle<M> {
         });
         let t = anim.value();
 
-        // Track
         let track_color = Color::lerp(theme.surface_variant, theme.success, t);
         draw_list.rounded_rect(rect, track_color, rect.height / 2.0);
 
-        // Thumb
         let thumb_radius = (rect.height - 4.0) / 2.0;
         let thumb_x = rect.x + 2.0 + t * (rect.width - rect.height);
         let thumb_y = rect.y + 2.0;

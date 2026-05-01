@@ -4,9 +4,9 @@ use lever_core::types::{Color, ImageFit, Point, SideOffsets, TextureId};
 use lever_core::widget::Widget;
 use lever_core::widgets::{
     child, AnimatedOpacity, AnimatedScale, AnimatedTranslation, BoxWidget, Button, ButtonVariant,
-    Checkbox, ConstraintLayout, Dropdown, Flex, Grid, ImageWidget, Label, Overlay, RadioGroup,
-    RadioOption, Scroll, Slider, Spacer, SpacerOrientation, TabItem, TabStyle, Tabs, ThemeToggle,
-    Toggle, PARENT,
+    Checkbox, CircularProgress, ConstraintLayout, Dropdown, Flex, Grid, ImageWidget, Label,
+    Overlay, ProgressBar, RadioGroup, RadioOption, Scroll, Slider, Spacer, SpacerOrientation,
+    TabItem, TabStyle, Tabs, TextInput, ThemeToggle, Toggle, PARENT,
 };
 use lever_core::MainAxisAlignment;
 use lever_windowing::{AppConfig, Application};
@@ -19,7 +19,10 @@ pub enum Message {
     DiscreteSliderChanged(f32),
     PercentSliderChanged(f32),
     CheckboxChanged(bool),
-    TextChanged(String, usize),
+    TextInput1Changed(String, usize),
+    TextInput2Changed(String, usize),
+    TextInput3Changed(String, usize),
+    TextInput4Changed(String, usize),
     ThemeModeChanged(lever_core::theme::ThemeMode),
     TogglePulse(bool),
     ToggleFloat(bool),
@@ -39,8 +42,14 @@ pub struct GalleryApp {
     discrete_slider: f32,
     percent_slider: f32,
     checkbox_checked: bool,
-    input_text: String,
-    cursor_index: usize,
+    text_input1: String,
+    cursor1: usize,
+    text_input2: String,
+    cursor2: usize,
+    text_input3: String,
+    cursor3: usize,
+    text_input4: String,
+    cursor4: usize,
     theme_mode: lever_core::theme::ThemeMode,
     is_pulsing: bool,
     is_floating: bool,
@@ -63,8 +72,14 @@ impl Default for GalleryApp {
             discrete_slider: 50.0,
             percent_slider: 0.75,
             checkbox_checked: true,
-            input_text: "Hello, Lever!".to_string(),
-            cursor_index: 0,
+            text_input1: "Hello, Lever!".to_string(),
+            cursor1: 13,
+            text_input2: String::new(),
+            cursor2: 0,
+            text_input3: String::new(),
+            cursor3: 0,
+            text_input4: String::new(),
+            cursor4: 0,
             theme_mode: lever_core::theme::ThemeMode::Dark,
             is_pulsing: false,
             is_floating: false,
@@ -91,9 +106,21 @@ impl App for GalleryApp {
 
     fn update(&mut self, message: Self::Message, context: &mut UpdateContext) {
         match message {
-            Message::TextChanged(text, cursor) => {
-                self.input_text = text;
-                self.cursor_index = cursor;
+            Message::TextInput1Changed(text, cursor) => {
+                self.text_input1 = text;
+                self.cursor1 = cursor;
+            }
+            Message::TextInput2Changed(text, cursor) => {
+                self.text_input2 = text;
+                self.cursor2 = cursor;
+            }
+            Message::TextInput3Changed(text, cursor) => {
+                self.text_input3 = text;
+                self.cursor3 = cursor;
+            }
+            Message::TextInput4Changed(text, cursor) => {
+                self.text_input4 = text;
+                self.cursor4 = cursor;
             }
             Message::ButtonClicked(label) => {
                 println!("Button clicked: {}", label);
@@ -175,7 +202,6 @@ impl App for GalleryApp {
             lever_core::animation::Spring::SMOOTH,
         );
 
-        // Helper to create a section card
         let section_card = |title: &str,
                             subtitle: &str,
                             child: Box<dyn Widget<Self::Message>>,
@@ -306,7 +332,7 @@ impl App for GalleryApp {
             0,
         );
 
-        let interactive_section = section_card(
+        let controls_section = section_card(
             "Interactive Components",
             "Essential building blocks for user input and actions.",
             Box::new(Flex::column(vec![
@@ -459,6 +485,82 @@ impl App for GalleryApp {
             ])),
             0,
         );
+
+        let progress_section = section_card(
+            "Progress Indicators",
+            "Linear and circular indicators for status and loading states.",
+            Box::new(
+                Flex::column(vec![
+                    Box::new(
+                        Label::new("Linear Progress")
+                            .with_size(12.0)
+                            .with_color(theme.text_muted),
+                    ),
+                    Box::new(Spacer::new().with_size(10.0, 8.0)),
+                    Box::new(ProgressBar::new("p1", self.slider_value)),
+                    Box::new(Spacer::new().with_size(10.0, 24.0)),
+                    Box::new(
+                        Label::new("Indeterminate (Loading)")
+                            .with_size(12.0)
+                            .with_color(theme.text_muted),
+                    ),
+                    Box::new(Spacer::new().with_size(10.0, 8.0)),
+                    Box::new(ProgressBar::indeterminate("p2").with_color(theme.success)),
+                    Box::new(Spacer::new().with_size(10.0, 32.0)),
+                    Box::new(
+                        Flex::row(vec![
+                            Box::new(
+                                Flex::column(vec![
+                                    Box::new(
+                                        Label::new("Circular")
+                                            .with_size(12.0)
+                                            .with_color(theme.text_muted),
+                                    ),
+                                    Box::new(Spacer::new().with_size(10.0, 12.0)),
+                                    Box::new(CircularProgress::new("c1", self.slider_value)),
+                                ])
+                                .with_flex(1),
+                            ),
+                            Box::new(
+                                Flex::column(vec![
+                                    Box::new(
+                                        Label::new("Indeterminate")
+                                            .with_size(12.0)
+                                            .with_color(theme.text_muted),
+                                    ),
+                                    Box::new(Spacer::new().with_size(10.0, 12.0)),
+                                    Box::new(
+                                        CircularProgress::indeterminate("c2")
+                                            .with_color(theme.secondary),
+                                    ),
+                                ])
+                                .with_flex(1),
+                            ),
+                            Box::new(
+                                Flex::column(vec![
+                                    Box::new(
+                                        Label::new("Custom Style")
+                                            .with_size(12.0)
+                                            .with_color(theme.text_muted),
+                                    ),
+                                    Box::new(Spacer::new().with_size(10.0, 12.0)),
+                                    Box::new(
+                                        CircularProgress::new("c3", 0.75)
+                                            .with_thickness(8.0)
+                                            .with_color(theme.danger),
+                                    ),
+                                ])
+                                .with_flex(1),
+                            ),
+                        ])
+                        .with_gap(24.0),
+                    ),
+                ])
+                .with_cross_axis_alignment(lever_core::layout::CrossAxisAlignment::Stretch),
+            ),
+            0,
+        );
+
         let test_tex = self.test_image.unwrap_or(TextureId(0));
 
         let navigation_section = section_card(
@@ -801,6 +903,52 @@ impl App for GalleryApp {
             0,
         );
 
+        let inputs_section = section_card(
+            "Form Inputs",
+            "Modern text fields with validation, icons, and password support.",
+            Box::new(
+                Flex::column(vec![
+                    Box::new(
+                        TextInput::new("input-1")
+                            .with_placeholder("Username or email")
+                            .with_text(self.text_input1.clone())
+                            .with_cursor(self.cursor1)
+                            .on_input(|text, idx| Message::TextInput1Changed(text, idx)),
+                    ),
+                    Box::new(Spacer::new().with_size(10.0, 16.0)),
+                    Box::new(
+                        TextInput::new("input-2")
+                            .with_placeholder("Password")
+                            .with_text(self.text_input2.clone())
+                            .with_cursor(self.cursor2)
+                            .with_password(true)
+                            .with_leading_icon(test_tex)
+                            .on_input(|text, idx| Message::TextInput2Changed(text, idx)),
+                    ),
+                    Box::new(Spacer::new().with_size(10.0, 32.0)),
+                    Box::new(
+                        TextInput::new("input-3")
+                            .with_placeholder("Search something...")
+                            .with_text(self.text_input3.clone())
+                            .with_cursor(self.cursor3)
+                            .with_trailing_icon(test_tex)
+                            .on_input(|text, idx| Message::TextInput3Changed(text, idx)),
+                    ),
+                    Box::new(Spacer::new().with_size(10.0, 16.0)),
+                    Box::new(
+                        TextInput::new("input-4")
+                            .with_placeholder("Invalid input")
+                            .with_text(self.text_input4.clone())
+                            .with_cursor(self.cursor4)
+                            .with_error("This field is required")
+                            .on_input(|text, idx| Message::TextInput4Changed(text, idx)),
+                    ),
+                ])
+                .with_cross_axis_alignment(lever_core::layout::CrossAxisAlignment::Stretch),
+            ),
+            0,
+        );
+
         let content = Flex::column(vec![
             header,
             Box::new(Spacer::new().with_size(10.0, 48.0)),
@@ -812,7 +960,11 @@ impl App for GalleryApp {
             Box::new(Spacer::new().with_size(10.0, 24.0)),
             image_section,
             Box::new(Spacer::new().with_size(10.0, 24.0)),
-            interactive_section,
+            controls_section,
+            Box::new(Spacer::new().with_size(10.0, 40.0)),
+            inputs_section,
+            Box::new(Spacer::new().with_size(10.0, 40.0)),
+            progress_section,
             Box::new(Spacer::new().with_size(10.0, 40.0)),
             navigation_section,
             Box::new(Spacer::new().with_size(10.0, 40.0)),

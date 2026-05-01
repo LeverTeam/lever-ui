@@ -58,7 +58,6 @@ impl<M: 'static> Widget<M> for ConstraintLayout<M> {
         if let Some(id) = self.id() {
             let cache = get_or_set_state::<LayoutCache, _>(id, || LayoutCache::default());
             if cache.parent_size == constraints.max_size() && !cache.solved_rects.is_empty() {
-                // Find bounding box from cache
                 let mut max_x = 0.0f32;
                 let mut max_y = 0.0f32;
                 for r in &cache.solved_rects {
@@ -74,7 +73,6 @@ impl<M: 'static> Widget<M> for ConstraintLayout<M> {
             }
         }
 
-        // Layout all children with loose constraints first to get their natural sizes
         let mut child_sizes = Vec::with_capacity(self.children.len());
         for child in &self.children {
             let res = child.layout(
@@ -86,7 +84,6 @@ impl<M: 'static> Widget<M> for ConstraintLayout<M> {
             child_sizes.push(res.size);
         }
 
-        // Initialize child rects with their natural sizes at (0,0)
         let mut child_rects: Vec<Rect> = child_sizes
             .iter()
             .map(|s| Rect {
@@ -97,8 +94,6 @@ impl<M: 'static> Widget<M> for ConstraintLayout<M> {
             })
             .collect();
 
-        // Solve constraints relative to a parent at (0,0)
-        // If parent is infinite, use a reasonable large value for centering/etc.
         let solver_w = if constraints.max_width.is_finite() {
             constraints.max_width
         } else {
@@ -118,7 +113,6 @@ impl<M: 'static> Widget<M> for ConstraintLayout<M> {
         });
         solver.solve(&self.constraints, &mut child_rects);
 
-        // Find the bounding box of all children
         let mut max_x = 0.0f32;
         let mut max_y = 0.0f32;
         for r in &child_rects {
@@ -146,7 +140,6 @@ impl<M: 'static> Widget<M> for ConstraintLayout<M> {
         let child_rects = if let Some(id) = self.id() {
             let mut cache = get_or_set_state::<LayoutCache, _>(id, || LayoutCache::default());
 
-            // If cache is invalid or empty, re-solve
             if cache.parent_size != rect.size() || cache.solved_rects.len() != self.children.len() {
                 let mut child_sizes = Vec::with_capacity(self.children.len());
                 for child in &self.children {
@@ -185,7 +178,6 @@ impl<M: 'static> Widget<M> for ConstraintLayout<M> {
                 cache.solved_rects.clone()
             }
         } else {
-            // No ID, re-solve every time
             let mut child_sizes = Vec::with_capacity(self.children.len());
             for child in &self.children {
                 let res = child.layout(
@@ -245,7 +237,6 @@ impl<M: 'static> Widget<M> for ConstraintLayout<M> {
             if cache.parent_size == rect.size() && cache.solved_rects.len() == self.children.len() {
                 cache.solved_rects.clone()
             } else {
-                // Fallback if cache missing
                 let mut child_sizes = Vec::with_capacity(self.children.len());
                 for child in &self.children {
                     let res = child.layout(
@@ -355,7 +346,6 @@ impl<M: 'static> Widget<M> for ConstraintLayout<M> {
     }
 }
 
-// Helper for cleaner API
 pub const PARENT: ConstraintTarget = ConstraintTarget::Parent;
 pub fn child(idx: usize) -> ConstraintTarget {
     ConstraintTarget::Child(idx)

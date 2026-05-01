@@ -49,7 +49,7 @@ struct AppHandler<A: App> {
     cursor_pos: lever_core::types::Point,
     text_system: lever_core::text::TextSystem,
 
-    // Theme system with animation support
+    
     theme: Theme,
     base_theme: Theme,
     target_theme: Theme,
@@ -114,7 +114,7 @@ impl<A: App> AppHandler<A> {
                 if !self.theme_animation.is_animating() {
                     self.base_theme = self.theme.clone();
                 } else {
-                    // If already animating, use current theme as new base
+                    
                     self.base_theme = self.theme.clone();
                 }
                 self.target_theme = new_theme;
@@ -190,7 +190,7 @@ impl<A: App> ApplicationHandler for AppHandler<A> {
             .make_current(&gl_surface)
             .expect("Failed to make context current");
 
-        // Enable V-Sync
+        
         let _ = gl_surface.set_swap_interval(
             &gl_context,
             glutin::surface::SwapInterval::Wait(std::num::NonZeroU32::new(1).unwrap()),
@@ -206,7 +206,7 @@ impl<A: App> ApplicationHandler for AppHandler<A> {
         let mut renderer = Renderer::new(glow_context, self.text_system.fonts())
             .expect("Failed to create renderer");
 
-        // Initialize application state and load assets
+        
         {
             let mut ctx = lever_core::app::Context::new(&mut renderer);
             self.app.init(&mut ctx);
@@ -351,12 +351,14 @@ impl<A: App> ApplicationHandler for AppHandler<A> {
             WindowEvent::KeyboardInput { event, .. } => {
                 if event.state == winit::event::ElementState::Pressed {
                     if let Some(text) = event.text.as_ref() {
-                        self.dispatch_event(FrameworkEvent::TextInput {
-                            text: text.to_string(),
-                        });
+                        
+                        let filtered: String = text.chars().filter(|c| !c.is_control()).collect();
+                        if !filtered.is_empty() {
+                            self.dispatch_event(FrameworkEvent::TextInput { text: filtered });
+                        }
                     }
 
-                    // Map winit key to lever_core key
+                    
                     use winit::keyboard::{KeyCode, PhysicalKey};
                     let key = match event.physical_key {
                         PhysicalKey::Code(KeyCode::Backspace) => {
@@ -395,16 +397,17 @@ impl<A: App> ApplicationHandler for AppHandler<A> {
         let mut dt = now.duration_since(self.last_frame).as_secs_f32();
         self.last_frame = now;
 
-        // Cap dt to avoid massive jumps (e.g. during resize or pause)
+        
         if dt > 0.05 {
             dt = 0.05;
         }
 
-        // Tick application and framework animations
+        
         self.app.tick(dt);
         lever_core::state::tick_animations(dt);
+        self.dispatch_event(FrameworkEvent::Animate { dt });
 
-        // Theme transition animation
+        
         if self.theme_animation.is_animating() {
             self.theme_animation.tick(dt);
             self.theme = Theme::lerp(

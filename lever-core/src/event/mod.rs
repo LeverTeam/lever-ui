@@ -100,6 +100,9 @@ pub enum FrameworkEvent {
         position: Point,
         delta: Point,
     },
+    Animate {
+        dt: f32,
+    },
 }
 
 impl FrameworkEvent {

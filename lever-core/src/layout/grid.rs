@@ -55,9 +55,7 @@ impl GridLayout {
                 GridTrack::Flex(f) => {
                     total_flex_cols += f;
                 }
-                GridTrack::Auto => {
-                    // Auto width will be calculated from children in this column
-                }
+                GridTrack::Auto => {}
             }
         }
 
@@ -72,13 +70,10 @@ impl GridLayout {
                 GridTrack::Flex(f) => {
                     total_flex_rows += f;
                 }
-                GridTrack::Auto => {
-                    // Auto height will be calculated from children in this row
-                }
+                GridTrack::Auto => {}
             }
         }
 
-        // Handle Auto tracks
         for (i, child) in children.iter().enumerate() {
             let col = i % col_count;
             let row = i / col_count;
@@ -111,7 +106,6 @@ impl GridLayout {
             }
         }
 
-        // Handle Flex tracks
         if total_flex_cols > 0 && constraints.max_width.is_finite() {
             let remaining_width = (constraints.max_width - used_width).max(0.0);
             let width_per_flex = remaining_width / total_flex_cols as f32;
@@ -165,7 +159,6 @@ impl GridLayout {
                     let child_width = col_widths[c];
                     let child_height = row_heights[r];
 
-                    // Final layout of child to its cell size
                     let child_constraints = Constraints::tight(child_width, child_height);
                     let _ = children[child_idx].layout(child_constraints, &[], text_system, theme);
 

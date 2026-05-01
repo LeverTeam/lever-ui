@@ -62,7 +62,7 @@ impl<M: 'static> Widget<M> for Label<M> {
             font_size,
             color,
             constraints.max_width_opt(),
-            TextAlign::Left, // Alignment is handled during drawing
+            TextAlign::Left,
         );
         LayoutResult {
             size: constraints.clamp_size(Size {

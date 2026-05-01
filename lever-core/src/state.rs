@@ -4,6 +4,15 @@ use std::collections::HashMap;
 
 thread_local! {
     static STATE_STORE: RefCell<HashMap<String, Box<dyn Any>>> = RefCell::new(HashMap::new());
+    static GLOBAL_TIME: RefCell<f32> = RefCell::new(0.0);
+}
+
+pub fn get_time() -> f32 {
+    GLOBAL_TIME.with(|t| *t.borrow())
+}
+
+pub fn set_time(time: f32) {
+    GLOBAL_TIME.with(|t| *t.borrow_mut() = time);
 }
 
 pub fn get_state<T: Any + Clone>(id: &str) -> Option<T> {
@@ -43,6 +52,7 @@ pub fn update_state<T: Any, F: FnOnce(&mut T)>(id: &str, f: F) {
 }
 
 pub fn tick_animations(dt: f32) {
+    GLOBAL_TIME.with(|t| *t.borrow_mut() += dt);
     STATE_STORE.with(|store| {
         for val in store.borrow_mut().values_mut() {
             if let Some(anim) = val.downcast_mut::<crate::animation::AnimationController>() {

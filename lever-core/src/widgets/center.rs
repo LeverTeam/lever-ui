@@ -28,7 +28,6 @@ impl<M: 'static> Widget<M> for Center<M> {
         text_system: &mut crate::text::TextSystem,
         theme: &crate::theme::Theme,
     ) -> LayoutResult {
-        // Center always wants to fill the available space if possible
         let size = Size {
             width: if constraints.max_width.is_finite() {
                 constraints.max_width

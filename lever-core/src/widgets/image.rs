@@ -94,7 +94,6 @@ impl<M: 'static> Widget<M> for ImageWidget<M> {
                 let rect_aspect = rect.width / rect.height;
 
                 if self.fit == ImageFit::Contain {
-                    // Adjust rect to maintain aspect ratio within the given rect
                     let (target_w, target_h) = if rect_aspect > img_aspect {
                         (rect.height * img_aspect, rect.height)
                     } else {
@@ -114,14 +113,11 @@ impl<M: 'static> Widget<M> for ImageWidget<M> {
                     );
                     return;
                 } else {
-                    // Cover: scale UVs to crop
                     if rect_aspect > img_aspect {
-                        // Rect is wider than image: crop top/bottom
                         let uv_h = img_aspect / rect_aspect;
                         let uv_y = (1.0 - uv_h) / 2.0;
                         [0.0, uv_y, 1.0, uv_h]
                     } else {
-                        // Rect is taller than image: crop left/right
                         let uv_w = rect_aspect / img_aspect;
                         let uv_x = (1.0 - uv_w) / 2.0;
                         [uv_x, 0.0, uv_w, 1.0]

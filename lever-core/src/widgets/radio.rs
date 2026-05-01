@@ -98,7 +98,6 @@ impl<M: 'static> Widget<M> for RadioButton<M> {
             height: 24.0,
         };
 
-        // Animate border color
         let target_border = if self.is_disabled {
             theme.border
         } else if self.is_selected {
@@ -110,10 +109,8 @@ impl<M: 'static> Widget<M> for RadioButton<M> {
         };
         let border_color = animated_color(&format!("{}_border", self.id), target_border, 0.15);
 
-        // Draw outer circle
         draw_list.stroke_rect(circle_rect, border_color, circle_radius, 2.0);
 
-        // Draw inner dot with spring animation
         let dot_scale = animated_spring(
             &format!("{}_dot_scale", self.id),
             if self.is_selected { 1.0 } else { 0.0 },

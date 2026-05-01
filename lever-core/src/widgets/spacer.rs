@@ -106,7 +106,6 @@ impl<M: 'static> Widget<M> for Spacer<M> {
             };
 
             if is_horizontal {
-                // Horizontal divider (centered vertically)
                 let draw_w = if self.width > 0.0 {
                     self.width.min(rect.width)
                 } else {
@@ -125,7 +124,6 @@ impl<M: 'static> Widget<M> for Spacer<M> {
                     0.0,
                 );
             } else {
-                // Vertical divider (centered horizontally and vertically)
                 let draw_h = if self.height > 0.0 {
                     self.height.min(rect.height)
                 } else {

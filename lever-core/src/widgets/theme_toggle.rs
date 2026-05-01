@@ -71,11 +71,9 @@ impl<M: 'static> Widget<M> for ThemeToggle<M> {
         let center_x = rect.x + rect.width / 2.0;
         let center_y = rect.y + rect.height / 2.0;
 
-        // Background circle
         draw_list.rounded_rect(rect, theme.surface_variant, rect.width / 2.0);
 
-        // Sun/Moon body
-        let body_radius = 8.0 + (1.0 - t) * 2.0; // Slightly larger for moon
+        let body_radius = 8.0 + (1.0 - t) * 2.0;
         let body_color = Color::lerp(Color::rgb(0.9, 0.9, 1.0), Color::rgb(1.0, 0.8, 0.2), t);
 
         draw_list.rounded_rect(
@@ -89,7 +87,6 @@ impl<M: 'static> Widget<M> for ThemeToggle<M> {
             body_radius,
         );
 
-        // Moon cutout (only visible when t < 1.0)
         if t < 0.99 {
             let cutout_x = center_x + 6.0 * (1.0 - t);
             let cutout_y = center_y - 4.0 * (1.0 - t);
@@ -107,7 +104,6 @@ impl<M: 'static> Widget<M> for ThemeToggle<M> {
             );
         }
 
-        // Sun rays (only visible when t > 0.0)
         if t > 0.01 {
             let ray_count = 8;
             let ray_length = 4.0 * t;

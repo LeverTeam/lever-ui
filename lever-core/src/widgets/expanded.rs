@@ -52,9 +52,8 @@ impl<M: 'static> Widget<M> for Expanded<M> {
         text_system: &mut crate::text::TextSystem,
         theme: &crate::theme::Theme,
     ) -> LayoutResult {
-        // Expanded always takes all the space it's given by Flex
         let child_constraints = match self.fit {
-            FlexFit::Tight => constraints, // Pass the tight constraints (usually fixed size from Flex)
+            FlexFit::Tight => constraints,
             FlexFit::Loose => Constraints::loose(constraints.max_width, constraints.max_height),
         };
 
@@ -76,7 +75,6 @@ impl<M: 'static> Widget<M> for Expanded<M> {
         focused_id: Option<&str>,
         pointer_pos: Option<crate::types::Point>,
     ) {
-        // Re-layout child to get its size for alignment
         let child_constraints = match self.fit {
             FlexFit::Tight => Constraints::tight(rect.width, rect.height),
             FlexFit::Loose => Constraints::loose(rect.width, rect.height),

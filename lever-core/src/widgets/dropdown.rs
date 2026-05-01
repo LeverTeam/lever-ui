@@ -8,7 +8,7 @@ use crate::widget::Widget;
 #[derive(Debug, Clone, Default)]
 struct DropdownState {
     is_open: bool,
-    open_anim: f32, // 0.0 to 1.0
+    open_anim: f32,
 }
 
 pub struct Dropdown<M> {
@@ -74,7 +74,6 @@ impl<M: 'static> Widget<M> for Dropdown<M> {
     ) {
         let mut state = get_or_set_state::<DropdownState, _>(&self.id, || DropdownState::default());
 
-        // Update animation (using fixed dt for now, same as checkbox)
         let target = if state.is_open { 1.0 } else { 0.0 };
         if (state.open_anim - target).abs() > 0.001 {
             state.open_anim += (target - state.open_anim) * 0.2;
@@ -83,7 +82,6 @@ impl<M: 'static> Widget<M> for Dropdown<M> {
 
         let is_hovered = pointer_pos.map_or(false, |pos| rect.contains(pos));
 
-        // Draw the button
         let bg_color = if state.is_open {
             theme.surface_variant
         } else if is_hovered {
@@ -110,7 +108,6 @@ impl<M: 'static> Widget<M> for Dropdown<M> {
             layout.glyphs,
         );
 
-        // Line-based chevron
         let chevron_color = if state.is_open {
             theme.primary
         } else {
@@ -124,9 +121,8 @@ impl<M: 'static> Widget<M> for Dropdown<M> {
             x: chevron_center_x,
             y: chevron_center_y,
         });
-        draw_list.push_scale(1.0, Point { x: 0.0, y: 0.0 }); // Placeholder for future rotation if added to draw_list
+        draw_list.push_scale(1.0, Point { x: 0.0, y: 0.0 });
 
-        // Simpler: just interpolate between down and up points
         let p1_down = Point { x: -4.0, y: -2.0 };
         let p2_down = Point { x: 0.0, y: 2.0 };
         let p3_down = Point { x: 4.0, y: -2.0 };
@@ -155,7 +151,6 @@ impl<M: 'static> Widget<M> for Dropdown<M> {
         draw_list.pop_scale();
         draw_list.pop_translation();
 
-        // DEFERRED: Draw Menu
         if state.is_open {
             let menu_width = rect.width;
             let item_height = 36.0;
@@ -168,7 +163,6 @@ impl<M: 'static> Widget<M> for Dropdown<M> {
                 height: menu_height,
             };
 
-            // Animated Menu Wrapper
             draw_list.push_opacity(state.open_anim);
             let pivot = Point {
                 x: rect.x + rect.width / 2.0,
@@ -176,7 +170,6 @@ impl<M: 'static> Widget<M> for Dropdown<M> {
             };
             draw_list.push_scale(0.95 + 0.05 * state.open_anim, pivot);
 
-            // Shadow and Background
             draw_list.push_deferred(DrawCommand::RoundedRect {
                 rect: menu_rect,
                 color: theme.surface,
@@ -249,7 +242,6 @@ impl<M: 'static> Widget<M> for Dropdown<M> {
                         let next_open = !state.is_open;
                         update_state::<DropdownState, _>(&self.id, |s| s.is_open = next_open);
                     } else if state.is_open {
-                        // Check menu items
                         let menu_width = rect.width;
                         let item_height = 36.0;
                         let menu_y = rect.y + rect.height + 4.0;
@@ -272,7 +264,6 @@ impl<M: 'static> Widget<M> for Dropdown<M> {
                             }
                         }
 
-                        // Clicked outside while open
                         if state.is_open {
                             *consumed = true;
                             update_state::<DropdownState, _>(&self.id, |s| s.is_open = false);

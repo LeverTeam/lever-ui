@@ -119,7 +119,6 @@ impl<M: 'static> Widget<M> for AnimatedTranslation<M> {
         focused_id: &mut Option<String>,
         consumed: &mut bool,
     ) -> Vec<M> {
-        // Offset the rect so that hit testing works on the visually translated position
         let translated_rect = rect.translate(self.offset);
         self.child.on_event(
             event,

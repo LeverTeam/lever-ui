@@ -8,7 +8,7 @@ use crate::widget::Widget;
 pub(crate) struct ScrollState {
     pub content_size: Size,
     pub is_dragging_v: bool,
-    pub is_dragging_h: bool,
+    pub _is_dragging_h: bool,
 }
 
 impl Default for ScrollState {
@@ -16,7 +16,7 @@ impl Default for ScrollState {
         Self {
             content_size: Size::new(0.0, 0.0),
             is_dragging_v: false,
-            is_dragging_h: false,
+            _is_dragging_h: false,
         }
     }
 }
@@ -126,12 +126,10 @@ impl<M: 'static> Widget<M> for Scroll<M> {
 
         draw_list.clip_pop();
 
-        // Draw vertical scrollbar
         if content_size.height > rect.height {
             let is_hovered = pointer_pos.map_or(false, |pos| rect.contains(pos));
             let is_active = is_hovered || state.is_dragging_v;
 
-            // Animate scrollbar appearance
             let opacity = crate::animated::animated_spring(
                 &format!("{}_sb_opacity", self.id),
                 if is_active { 1.0 } else { 0.0 },
@@ -178,7 +176,6 @@ impl<M: 'static> Widget<M> for Scroll<M> {
         let state = crate::state::get_state::<ScrollState>(&self.id).unwrap_or_default();
         let content_size = state.content_size;
 
-        // Handle dragging
         if state.is_dragging_v {
             if let FrameworkEvent::PointerMove { position } = event {
                 let max_scroll = (content_size.height - rect.height).max(0.0);
@@ -208,10 +205,8 @@ impl<M: 'static> Widget<M> for Scroll<M> {
             }
         }
 
-        // Handle scroll wheel
         if let FrameworkEvent::Scroll { position, delta } = event {
             if rect.contains(*position) {
-                // Clamping logic
                 let (max_scroll_x, max_scroll_y) =
                     if content_size.width > 0.0 || content_size.height > 0.0 {
                         (
@@ -233,7 +228,6 @@ impl<M: 'static> Widget<M> for Scroll<M> {
             }
         }
 
-        // Handle scrollbar click
         if let FrameworkEvent::PointerDown { position, button } = event {
             if *button == crate::event::PointerButton::Primary && rect.contains(*position) {
                 if content_size.height > rect.height {

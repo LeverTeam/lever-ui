@@ -14,7 +14,7 @@ pub struct Overlay<M> {
 impl<M> Overlay<M> {
     pub fn new() -> Self {
         Self {
-            color: Color::rgba(0.0, 0.0, 0.0, 0.5), // 50% black backdrop
+            color: Color::rgba(0.0, 0.0, 0.0, 0.5),
             child: None,
             alignment: crate::layout::Alignment::Center,
             on_dismiss: None,
@@ -50,9 +50,7 @@ impl<M: 'static> Widget<M> for Overlay<M> {
         text_system: &mut crate::text::TextSystem,
         theme: &crate::theme::Theme,
     ) -> LayoutResult {
-        // Overlay always stretches to fill all available space
         if let Some(child) = &self.child {
-            // Layout child with loose constraints
             child.layout(
                 Constraints::loose(constraints.max_width, constraints.max_height),
                 &[],
@@ -78,10 +76,8 @@ impl<M: 'static> Widget<M> for Overlay<M> {
         focused_id: Option<&str>,
         pointer_pos: Option<crate::types::Point>,
     ) {
-        // Draw backdrop
         draw_list.colored_rect(rect, self.color, 0.0);
 
-        // Draw child
         if let Some(child) = &self.child {
             let child_res = child.layout(
                 Constraints::loose(rect.width, rect.height),
@@ -121,7 +117,6 @@ impl<M: 'static> Widget<M> for Overlay<M> {
         let mut messages = Vec::new();
         let mut child_rect = None;
 
-        // Pass event to child first
         if let Some(child) = &mut self.child {
             let child_res = child.layout(
                 Constraints::loose(rect.width, rect.height),
@@ -142,12 +137,10 @@ impl<M: 'static> Widget<M> for Overlay<M> {
             messages.extend(child.on_event(event, crect, text_system, theme, focused_id, consumed));
         }
 
-        // If child didn't handle it, check for dismissal
         if !*consumed {
             match event {
                 FrameworkEvent::PointerDown { position, .. } => {
                     if rect.contains(*position) {
-                        // If clicked the backdrop (not the child), dismiss
                         let hit_child = child_rect.map_or(false, |r| r.contains(*position));
                         if !hit_child {
                             if let Some(on_dismiss) = &self.on_dismiss {
@@ -161,7 +154,6 @@ impl<M: 'static> Widget<M> for Overlay<M> {
             }
         }
 
-        // Always intercept events to prevent them from reaching widgets below
         if !*consumed {
             if let Some(pos) = event.pointer_pos() {
                 if rect.contains(pos) {

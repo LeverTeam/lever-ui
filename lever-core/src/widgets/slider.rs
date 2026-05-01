@@ -111,7 +111,6 @@ impl<M: 'static> Widget<M> for Slider<M> {
             height: track_height,
         };
 
-        // Normalize value for rendering (0.0 to 1.0)
         let normalized_val = if self.max > self.min {
             (self.value - self.min) / (self.max - self.min)
         } else {
@@ -121,10 +120,8 @@ impl<M: 'static> Widget<M> for Slider<M> {
         let animated_val =
             animated_spring(&format!("{}_val", self.id), normalized_val, Spring::SNAPPY);
 
-        // Track background
         draw_list.rounded_rect(track_rect, theme.surface_variant, track_height / 2.0);
 
-        // Active track
         let active_width = track_rect.width * animated_val;
         let active_color = if self.disabled {
             theme.text_muted.with_alpha(0.5)
@@ -143,7 +140,6 @@ impl<M: 'static> Widget<M> for Slider<M> {
             track_height / 2.0,
         );
 
-        // Focused state indicator
         if is_focused && !self.disabled {
             draw_list.stroke_rect(
                 rect.inset(-2.0, -2.0),
@@ -153,7 +149,6 @@ impl<M: 'static> Widget<M> for Slider<M> {
             );
         }
 
-        // Thumb
         let thumb_base_radius = 8.0;
         let thumb_scale = animated_spring(
             &format!("{}_thumb_scale", self.id),
@@ -206,7 +201,6 @@ impl<M: 'static> Widget<M> for Slider<M> {
         };
         draw_list.stroke_rect(thumb_rect, border_color, thumb_radius, 2.0);
 
-        // Value label when dragging
         if state.is_dragging {
             let label_text = if let Some(formatter) = &self.label_formatter {
                 formatter(self.value)

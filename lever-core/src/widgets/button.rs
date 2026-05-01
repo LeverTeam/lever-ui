@@ -135,7 +135,6 @@ impl<M: 'static> Widget<M> for Button<M> {
         let state = get_or_set_state::<ButtonState, _>(&self.id, || ButtonState::default());
         let is_hovered = pointer_pos.map_or(false, |pos| rect.contains(pos));
 
-        // Determine colors based on variant and state
         let (bg_color, text_color, border_color) = match self.variant {
             ButtonVariant::Primary => {
                 let base = self.color.unwrap_or(theme.primary);
@@ -216,20 +215,16 @@ impl<M: 'static> Widget<M> for Button<M> {
             }
         };
 
-        // Snappy color transitions
         let animated_bg = animated_color(&format!("{}_bg", self.id), bg_color, 0.08);
         let animated_text = animated_color(&format!("{}_text", self.id), text_color, 0.08);
         let animated_border = animated_color(&format!("{}_border", self.id), border_color, 0.08);
 
-        // Draw background
         draw_list.rounded_rect(rect, animated_bg, theme.radius_md);
 
-        // Draw border if needed
         if animated_border.a > 0.01 {
             draw_list.stroke_rect(rect, animated_border, theme.radius_md, 1.5);
         }
 
-        // Draw shadow for solid buttons
         if matches!(self.variant, ButtonVariant::Primary | ButtonVariant::Danger)
             && !state.is_pressed
         {
@@ -245,7 +240,6 @@ impl<M: 'static> Widget<M> for Button<M> {
             );
         }
 
-        // Label
         let font_size = match self.size {
             ButtonSize::Small => 12.0,
             ButtonSize::Medium => 14.0,
@@ -301,10 +295,7 @@ impl<M: 'static> Widget<M> for Button<M> {
                 }
             }
             FrameworkEvent::PointerMove { position } => {
-                if state.is_pressed && !rect.contains(*position) {
-                    // Optional: cancel press if mouse leaves the button
-                    // update_state::<ButtonState, _>(&self.id, |s| s.is_pressed = false);
-                }
+                if state.is_pressed && !rect.contains(*position) {}
             }
             _ => {}
         }

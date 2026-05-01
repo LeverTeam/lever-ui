@@ -8,44 +8,64 @@ pub enum DrawCommand {
         radius: f32,
         shadow: Option<crate::types::BoxShadow>,
     },
+
     GradientRect {
         rect: Rect,
         gradient: crate::types::Gradient,
         radius: f32,
     },
+
     ClipPush(Rect),
+
     ClipPop,
+
     Text {
         pos: crate::types::Point,
         glyphs: Vec<crate::text::GlyphInstance>,
     },
+
     Stroke {
         rect: Rect,
         color: Color,
         radius: f32,
         thickness: f32,
     },
+
     Image {
         rect: Rect,
         texture: crate::types::TextureId,
         tint: Color,
         uv: [f32; 4],
     },
+
     PushOpacity(f32),
+
     PopOpacity,
+
     PushTranslation(Point),
+
     PopTranslation,
+
     Triangle {
         p1: Point,
         p2: Point,
         p3: Point,
         color: Color,
     },
+
     PushScale {
         scale: f32,
         pivot: Point,
     },
+
     PopScale,
+
+    Arc {
+        rect: Rect,
+        color: Color,
+        thickness: f32,
+        progress: f32,
+    },
 }
 
 pub struct DrawList {
@@ -183,6 +203,15 @@ impl DrawList {
     pub fn triangle(&mut self, p1: Point, p2: Point, p3: Point, color: Color) {
         self.commands
             .push(DrawCommand::Triangle { p1, p2, p3, color });
+    }
+
+    pub fn arc(&mut self, rect: Rect, color: Color, thickness: f32, progress: f32) {
+        self.commands.push(DrawCommand::Arc {
+            rect,
+            color,
+            thickness,
+            progress,
+        });
     }
 
     pub fn line(&mut self, p1: Point, p2: Point, thickness: f32, color: Color) {

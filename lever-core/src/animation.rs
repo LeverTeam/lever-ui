@@ -41,37 +41,34 @@ impl Ease {
     }
 }
 
-/// Parameters for a spring animation.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Spring {
     pub stiffness: f32,
+
     pub damping: f32,
+
     pub mass: f32,
 }
 
 impl Spring {
-    /// A snappy, highly responsive spring with minimal overshoot.
     pub const SNAPPY: Self = Self {
         stiffness: 230.0,
         damping: 22.0,
         mass: 1.0,
     };
 
-    /// A smooth, gentle spring with no overshoot (critically damped).
     pub const SMOOTH: Self = Self {
         stiffness: 120.0,
         damping: 22.0,
         mass: 1.0,
     };
 
-    /// A bouncy, playful spring with noticeable oscillation.
     pub const BOUNCY: Self = Self {
         stiffness: 180.0,
         damping: 12.0,
         mass: 1.0,
     };
 
-    /// An over-damped, slow spring.
     pub const GENTLE: Self = Self {
         stiffness: 50.0,
         damping: 10.0,
@@ -110,9 +107,8 @@ impl SpringController {
     }
 
     pub fn tick(&mut self, dt: f32) {
-        // Use a fixed time step internally for stability (240Hz)
         let sub_step = 1.0 / 240.0;
-        let mut remaining_dt = dt.min(0.05); // Cap dt even tighter to avoid jumps
+        let mut remaining_dt = dt.min(0.05);
 
         while remaining_dt > 0.0 {
             let step = remaining_dt.min(sub_step);
@@ -127,7 +123,6 @@ impl SpringController {
             remaining_dt -= step;
         }
 
-        // Snap to target if very close and slow
         if (self.value - self.target).abs() < self.precision && self.velocity.abs() < self.precision
         {
             self.value = self.target;

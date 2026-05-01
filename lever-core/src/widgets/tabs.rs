@@ -112,7 +112,7 @@ impl<M: 'static> Widget<M> for Tabs<M> {
             );
             let mut item_width = layout.width + 32.0;
             if item.icon.is_some() {
-                item_width += 20.0; // Icon + Gap
+                item_width += 20.0;
             }
             total_width += item_width;
         }
@@ -142,7 +142,6 @@ impl<M: 'static> Widget<M> for Tabs<M> {
         let mut tab_widths = Vec::with_capacity(self.items.len());
         let mut total_content_width = 0.0;
 
-        // First pass: measure
         for item in &self.items {
             let layout = text_system.shape(
                 &item.label,
@@ -159,7 +158,6 @@ impl<M: 'static> Widget<M> for Tabs<M> {
             total_content_width += w;
         }
 
-        // Calculate starting X and individual widths
         let (mut current_x, draw_widths) = match self.alignment {
             MainAxisAlignment::SpaceBetween
             | MainAxisAlignment::SpaceAround
@@ -180,9 +178,7 @@ impl<M: 'static> Widget<M> for Tabs<M> {
 
         let mut tab_rects = Vec::with_capacity(self.items.len());
 
-        // Draw background for Contained style if needed
         if self.style == TabStyle::Pill {
-            // Draw a subtle background track for the pill
             draw_list.rounded_rect(
                 rect,
                 theme.surface_variant.with_alpha(0.3),
@@ -190,7 +186,6 @@ impl<M: 'static> Widget<M> for Tabs<M> {
             );
         }
 
-        // Draw items
         for (i, item) in self.items.iter().enumerate() {
             let tab_width = draw_widths[i];
             let tab_rect = Rect {
@@ -233,7 +228,6 @@ impl<M: 'static> Widget<M> for Tabs<M> {
             let mut content_x = current_x + (tab_width - content_width) / 2.0;
             let content_y = (rect.y + (rect.height - layout.height) / 2.0).round();
 
-            // Draw icon
             if let Some(icon) = item.icon {
                 draw_list.textured_rect(
                     Rect {
@@ -249,7 +243,6 @@ impl<M: 'static> Widget<M> for Tabs<M> {
                 content_x += 20.0;
             }
 
-            // Draw text
             draw_list.text(
                 Point {
                     x: content_x.round(),
@@ -261,7 +254,6 @@ impl<M: 'static> Widget<M> for Tabs<M> {
             current_x += tab_width;
         }
 
-        // Animate indicator
         if let Some(active_rect) = tab_rects.get(self.active_index) {
             let indicator_x = animated_spring(
                 &format!("{}_indicator_x", self.id),
@@ -297,9 +289,7 @@ impl<M: 'static> Widget<M> for Tabs<M> {
                         indicator_rect.height / 2.0,
                     );
                 }
-                TabStyle::Ghost => {
-                    // No physical indicator, just text color (handled in loop)
-                }
+                TabStyle::Ghost => {}
             }
         }
     }

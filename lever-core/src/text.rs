@@ -44,10 +44,8 @@ impl TextSystem {
         max_width: Option<f32>,
         align: crate::types::TextAlign,
     ) -> TextLayout {
-        // Filter out INFINITY or very large values to prevent layout collapse
         let max_width = max_width.filter(|w| w.is_finite());
 
-        // Use rounded font size for rasterization stability
         let px_size = font_size.round();
 
         let cache_key = CacheKey {
@@ -83,22 +81,19 @@ impl TextSystem {
         let mut cursor_positions = vec![0.0f32; text.len() + 1];
 
         for g in glyphs_raw {
-            // Add glyph to rendering list
             glyphs.push(GlyphInstance {
                 glyph_id: g.key.glyph_index as u32,
-                x: g.x, // Preserve fractional position
-                y: g.y, // Preserve fractional position
+                x: g.x,
+                y: g.y,
                 color,
                 font_size: px_size,
             });
 
-            // Update measured width
             width = width.max(g.x + g.width as f32);
 
-            // Update cursor positions for hit testing
             if g.byte_offset < cursor_positions.len() {
                 cursor_positions[g.byte_offset] = g.x;
-                // Estimate end position of this character
+
                 let char_len = text[g.byte_offset..]
                     .chars()
                     .next()
@@ -111,7 +106,6 @@ impl TextSystem {
             }
         }
 
-        // Use fontdue's line calculation for height and centering
         let (height, vertical_shift) = layout
             .lines()
             .map(|lines| {
@@ -132,7 +126,6 @@ impl TextSystem {
             })
             .unwrap_or((px_size * 1.2, 0.0));
 
-        // Apply vertical shift to all glyphs for better centering
         for glyph in &mut glyphs {
             glyph.y += vertical_shift;
         }

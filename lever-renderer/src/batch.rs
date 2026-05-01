@@ -409,6 +409,68 @@ impl RectBatch {
             .extend_from_slice(&[start_index, start_index + 1, start_index + 2]);
     }
 
+    pub fn push_arc(&mut self, rect: Rect, thickness: f32, progress: f32, color: Color) {
+        let margin = 2.0;
+        let (x1, y1, x2, y2, w, h) = Self::snap_rect(rect, margin);
+
+        let hw = w / 2.0;
+        let hh = h / 2.0;
+
+        let c = color.to_array();
+        let start_index = self.vertices.len() as u32;
+
+        let u_min = -hw - margin;
+        let v_min = -hh - margin;
+        let u_max = hw + margin;
+        let v_max = hh + margin;
+
+        self.vertices.push(ColoredVertex {
+            position: [x1, y1],
+            color: c,
+            color2: c,
+            uv: [u_min, v_min],
+            mode: 8.0,
+            size: [w, h],
+            extra: [0.0, thickness, progress, 0.0],
+        });
+        self.vertices.push(ColoredVertex {
+            position: [x2, y1],
+            color: c,
+            color2: c,
+            uv: [u_max, v_min],
+            mode: 8.0,
+            size: [w, h],
+            extra: [0.0, thickness, progress, 0.0],
+        });
+        self.vertices.push(ColoredVertex {
+            position: [x2, y2],
+            color: c,
+            color2: c,
+            uv: [u_max, v_max],
+            mode: 8.0,
+            size: [w, h],
+            extra: [0.0, thickness, progress, 0.0],
+        });
+        self.vertices.push(ColoredVertex {
+            position: [x1, y2],
+            color: c,
+            color2: c,
+            uv: [u_min, v_max],
+            mode: 8.0,
+            size: [w, h],
+            extra: [0.0, thickness, progress, 0.0],
+        });
+
+        self.indices.extend_from_slice(&[
+            start_index,
+            start_index + 1,
+            start_index + 2,
+            start_index,
+            start_index + 2,
+            start_index + 3,
+        ]);
+    }
+
     pub fn vertices(&self) -> &[ColoredVertex] {
         &self.vertices
     }

@@ -147,7 +147,6 @@ impl ConstraintSet {
         self
     }
 
-    // Semantic helpers
     pub fn after(self, target: Target, offset: f32) -> Self {
         self.left_to_right(target, offset)
     }
@@ -193,7 +192,6 @@ impl ConstraintSolver {
 
     pub fn solve(&self, children_constraints: &[ConstraintSet], children_rects: &mut [Rect]) {
         for _ in 0..3 {
-            // 3 passes should handle most simple chains
             for (i, set) in children_constraints.iter().enumerate() {
                 let mut rect = children_rects[i];
 
@@ -253,7 +251,6 @@ impl ConstraintSolver {
                             rect.height = c.offset;
                         }
                         Anchor::AspectRatio => {
-                            // c.offset is the ratio (width / height)
                             if rect.width > 0.0 && rect.height == 0.0 {
                                 rect.height = rect.width / c.offset;
                             } else if rect.height > 0.0 && rect.width == 0.0 {

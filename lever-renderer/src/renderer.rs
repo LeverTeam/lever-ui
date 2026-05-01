@@ -67,21 +67,21 @@ float sdRoundedRect(vec2 p, vec2 b, float r) {
 }
 
 void main() {
-    if (v_mode < 0.5) { // Mode 0: Textured (Text)
+    if (v_mode < 0.5) {
         float alpha = texture(u_texture, v_uv).r;
         frag_color = vec4(v_color.rgb, v_color.a * alpha);
-    } else if (v_mode < 1.5) { // Mode 1: Rounded Rect
+    } else if (v_mode < 1.5) {
         vec2 p = v_uv;
         float d = sdRoundedRect(p, v_size * 0.5, v_extra.x);
         float fw = max(fwidth(d), 0.0001);
         float alpha = 1.0 - smoothstep(-fw, fw, d);
         frag_color = vec4(v_color.rgb, v_color.a * alpha);
-    } else if (v_mode < 2.5) { // Mode 2: Shadow
+    } else if (v_mode < 2.5) {
         vec2 p = v_uv;
         float d = sdRoundedRect(p, v_size * 0.5, v_extra.x);
         float alpha = 1.0 - smoothstep(-v_extra.y, v_extra.y, d);
         frag_color = vec4(v_color.rgb, v_color.a * alpha);
-    } else if (v_mode < 3.5) { // Mode 3: Gradient Rounded Rect
+    } else if (v_mode < 3.5) {
         vec2 p = v_uv;
         float d = sdRoundedRect(p, v_size * 0.5, v_extra.x);
         float fw = max(fwidth(d), 0.0001);
@@ -89,18 +89,37 @@ void main() {
         vec2 normalized_uv = p / v_size + 0.5;
         vec4 color = mix(v_color, v_color2, normalized_uv.y);
         frag_color = vec4(color.rgb, color.a * alpha);
-    } else if (v_mode < 4.5) { // Mode 4: Raw Image
+    } else if (v_mode < 4.5) {
         vec4 tex_color = texture(u_texture, v_uv);
         frag_color = tex_color * v_color;
-    } else if (v_mode < 6.5) { // Mode 6: Stroke
+    } else if (v_mode < 6.5) {
         vec2 p = v_uv;
         float d = sdRoundedRect(p, v_size * 0.5, v_extra.x);
         float ring_d = abs(d + v_extra.y * 0.5) - v_extra.y * 0.5;
         float fw = max(fwidth(ring_d), 0.0001);
         float alpha = 1.0 - smoothstep(-fw, fw, ring_d);
         frag_color = vec4(v_color.rgb, v_color.a * alpha);
-    } else if (v_mode < 7.5) { // Mode 7: Flat Triangle
+    } else if (v_mode < 7.5) {
         frag_color = v_color;
+    } else if (v_mode < 8.5) {
+        vec2 p = v_uv;
+        float dist = length(p);
+        float radius = v_size.x * 0.5;
+        float thickness = v_extra.y;
+        float d = abs(dist - (radius - thickness * 0.5)) - thickness * 0.5;
+
+
+        float angle = atan(p.x, -p.y);
+        if (angle < 0.0) angle += 6.283185307;
+
+        float progress = v_extra.z;
+        float target_angle = progress * 6.283185307;
+
+        float angle_alpha = 1.0 - smoothstep(target_angle, target_angle + 0.01, angle);
+
+        float fw = max(fwidth(d), 0.0001);
+        float alpha = (1.0 - smoothstep(-fw, fw, d)) * angle_alpha;
+        frag_color = vec4(v_color.rgb, v_color.a * alpha);
     } else {
         frag_color = v_color;
     }
@@ -186,31 +205,24 @@ impl Renderer {
             gl.bind_buffer(glow::ARRAY_BUFFER, Some(vbo));
             let stride = std::mem::size_of::<crate::batch::ColoredVertex>() as i32;
 
-            // position: 0 (vec2)
             gl.enable_vertex_attrib_array(0);
             gl.vertex_attrib_pointer_f32(0, 2, glow::FLOAT, false, stride, 0);
 
-            // color: 1 (vec4)
             gl.enable_vertex_attrib_array(1);
             gl.vertex_attrib_pointer_f32(1, 4, glow::FLOAT, false, stride, 8);
 
-            // color2: 2 (vec4)
             gl.enable_vertex_attrib_array(2);
             gl.vertex_attrib_pointer_f32(2, 4, glow::FLOAT, false, stride, 24);
 
-            // uv: 3 (vec2)
             gl.enable_vertex_attrib_array(3);
             gl.vertex_attrib_pointer_f32(3, 2, glow::FLOAT, false, stride, 40);
 
-            // mode: 4 (float)
             gl.enable_vertex_attrib_array(4);
             gl.vertex_attrib_pointer_f32(4, 1, glow::FLOAT, false, stride, 48);
 
-            // size: 5 (vec2)
             gl.enable_vertex_attrib_array(5);
             gl.vertex_attrib_pointer_f32(5, 2, glow::FLOAT, false, stride, 52);
 
-            // extra: 6 (vec4)
             gl.enable_vertex_attrib_array(6);
             gl.vertex_attrib_pointer_f32(6, 4, glow::FLOAT, false, stride, 60);
 
@@ -333,9 +345,7 @@ impl Renderer {
     pub fn render(&mut self, draw_list: &DrawList) {
         self.render_commands(draw_list.commands());
 
-        // Render deferred commands (overlays)
         if !draw_list.deferred_commands().is_empty() {
-            // Reset state for overlays
             self.flush();
             unsafe {
                 self.gl.disable(glow::SCISSOR_TEST);
@@ -484,7 +494,7 @@ impl Renderer {
                     }
                     self.batch.push_image_rect(*rect, *uv, *tint);
                     self.flush();
-                    // Restore atlas texture
+
                     unsafe {
                         self.gl
                             .bind_texture(glow::TEXTURE_2D, Some(self.atlas.texture()));
@@ -563,6 +573,14 @@ impl Renderer {
                 DrawCommand::Triangle { p1, p2, p3, color } => {
                     self.batch.push_triangle(*p1, *p2, *p3, *color);
                 }
+                DrawCommand::Arc {
+                    rect,
+                    color,
+                    thickness,
+                    progress,
+                } => {
+                    self.batch.push_arc(*rect, *thickness, *progress, *color);
+                }
             }
         }
 
@@ -614,7 +632,6 @@ impl Renderer {
                 glow::CLAMP_TO_EDGE as i32,
             );
 
-            // Re-bind atlas
             self.gl
                 .bind_texture(glow::TEXTURE_2D, Some(self.atlas.texture()));
 

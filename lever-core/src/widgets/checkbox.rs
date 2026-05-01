@@ -81,7 +81,6 @@ impl<M: 'static> Widget<M> for Checkbox<M> {
             height: 24.0,
         };
 
-        // Animate background color
         let target_bg = if self.is_checked {
             theme.primary
         } else if is_hovered {
@@ -91,7 +90,6 @@ impl<M: 'static> Widget<M> for Checkbox<M> {
         };
         let bg_color = animated_color(&format!("{}_bg", self.id), target_bg, 0.2);
 
-        // Animate border color
         let target_border = if self.is_checked {
             theme.primary
         } else if is_hovered {
@@ -101,11 +99,9 @@ impl<M: 'static> Widget<M> for Checkbox<M> {
         };
         let border_color = animated_color(&format!("{}_border", self.id), target_border, 0.2);
 
-        // Draw box
         draw_list.rounded_rect(box_rect, bg_color, theme.radius_sm);
         draw_list.stroke_rect(box_rect, border_color, theme.radius_sm, 2.0);
 
-        // Draw checkmark with spring animation
         let check_scale = animated_spring(
             &format!("{}_check_scale", self.id),
             if self.is_checked { 1.0 } else { 0.0 },
@@ -117,11 +113,6 @@ impl<M: 'static> Widget<M> for Checkbox<M> {
             let cx = box_rect.x + (box_rect.width - check_size) / 2.0;
             let cy = box_rect.y + (box_rect.height - check_size) / 2.0;
 
-            // Draw a proper "V" checkmark using triangles for line segments
-            // Segment 1: (3, 7) to (6, 10)
-            // Segment 2: (6, 10) to (11, 4)
-            // Coordinates are relative to the 14x14 check area
-
             draw_list.push_scale(
                 check_scale,
                 Point {
@@ -130,7 +121,6 @@ impl<M: 'static> Widget<M> for Checkbox<M> {
                 },
             );
 
-            // Draw a proper "V" checkmark using the new line primitive
             let p1 = Point {
                 x: cx + 3.5,
                 y: cy + 7.5,
